@@ -1,82 +1,93 @@
 # Importando Ferramentas
-import rclpy                   # Biblioteca principal do ROS 2 para Python
-from rclpy.node import Node    # Classe base para criar um nó
-from std_msgs.msg import Int32MultiArray # Tipo de msg para arrays/matrizes de inteiros
-from dynamixel_sdk import * # Biblioteca para controlar os motores Dynamixel (AX-12)
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import Int32MultiArray
+from dynamixel_sdk import * 
 
 # --- Configurações do Motor ---
-# Lista com os IDs de todos os motores conectados que o nó deve gerenciar o torque
-ACTIVE_DXL_IDS          = list(range(1, 19)) # ADICIONE AQUI OS IDs DOS SEUS MOTORES
-BROADCAST_ID            = 254                # ID 254 (0xFE) fala com TODOS os motores ao mesmo tempo no Protocolo 1.0
-BAUDRATE                = 1000000            # Baudrate padrão (1 Mbps)
-DEVICENAME              = '/dev/ttyACM0'     # Porta da OpenCR
+ACTIVE_DXL_IDS          = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18] 
+BAUDRATE                = 1000000        
+DEVICENAME              = '/dev/ttyACM0' 
 PROTOCOL_VERSION        = 1.0
 
 # Endereços de controle do AX-12
 ADDR_TORQUE_ENABLE      = 24
 ADDR_GOAL_POSITION      = 30
+ADDR_MOVING_SPEED       = 32 # NOVO: Endereço para controlar a velocidade
+LEN_GOAL_POSITION       = 2  # Tamanho em bytes da posição (0 a 1023 usa 2 bytes)
 
 class AX12Controller(Node):
 
     def __init__(self):
-        super().__init__('ax12_controller_node')              # Nomear o Nó
+        super().__init__('ax12_controller_node')
 
         # Inicializa a comunicação Serial
-        self.portHandler = PortHandler(DEVICENAME)           # Configuração da porta serial
-        self.packetHandler = PacketHandler(PROTOCOL_VERSION) # Traduzir nossos números para a linguagem de bytes do Protocolo 1.0.
+        self.portHandler = PortHandler(DEVICENAME)
+        self.packetHandler = PacketHandler(PROTOCOL_VERSION)
         
-        # Tenta abrir a porta e configurar o baudrate
+        # Inicializa o GroupSyncWrite (Configurado para o endereço de Posição Alvo)
+        self.groupSyncWrite = GroupSyncWrite(self.portHandler, self.packetHandler, ADDR_GOAL_POSITION, LEN_GOAL_POSITION)
+
         if self.portHandler.openPort() and self.portHandler.setBaudRate(BAUDRATE):
             self.get_logger().info('Porta aberta e Baudrate configurado com sucesso!')
         else:
-            self.get_logger().error('Falha ao abrir a porta! Verifique o cabo e o chmod.')
+            self.get_logger().error('Falha ao abrir a porta!')
             return
 
-        # Liga o Torque de TODOS os motores listados
+        # Liga o Torque de TODOS os motores
         for dxl_id in ACTIVE_DXL_IDS:
             self.packetHandler.write1ByteTxRx(self.portHandler, dxl_id, ADDR_TORQUE_ENABLE, 1)
         self.get_logger().info(f'Torque LIGADO para os motores {ACTIVE_DXL_IDS}. Aguardando comandos...')
 
-        # Cria o Subscriber usando Int32MultiArray
-        self.subscription = self.create_subscription(
-            Int32MultiArray, 
-            '/set_position', 
-            self.listener_callback, 
-            10
-        )
+        # Cria o Subscriber
+        self.subscription = self.create_subscription(Int32MultiArray, '/set_position', self.listener_callback, 10)
 
     def listener_callback(self, msg):
-        # msg.data recebe o array achatado. Assumimos o formato: [ID1, Pos1, ID2, Pos2, ...]
         data = msg.data
 
-        # Verifica se o array tem um número par de elementos (garantindo que não falte a posição de um ID)
-        if len(data) % 2 != 0:
-            self.get_logger().error('Recebido array de tamanho ímpar! Envie pares de [ID, Posição].')
+        # Agora verifica se é múltiplo de 3 (ID, Posição, Velocidade)
+        if len(data) % 3 != 0:
+            self.get_logger().error('Recebido array inválido! Envie trios de [ID, Posição, Velocidade].')
             return
 
-        # Loop pulando de 2 em 2 para pegar os pares (colunas da sua matriz)
-        for i in range(0, len(data), 2):
+        # Limpa os parâmetros do SyncWrite da iteração anterior
+        self.groupSyncWrite.clearParam()
+
+        # Monta o pacote pulando de 3 em 3
+        for i in range(0, len(data), 3):
             dxl_id = data[i]
             graus = data[i+1]
+            velocidade = data[i+2]
 
-            # Limita os valores entre -150 e 150 graus
+            # --- Tratamento da Posição ---
             graus = max(-150, min(150, graus)) 
-
-            # Converte de graus (-150 a 150) para a escala do Dynamixel (0 a 1023)
             goal_pos = int((graus + 150) * (1023.0 / 300.0))
-            goal_pos = max(0, min(1023, goal_pos)) # Limite de segurança
+            goal_pos = max(0, min(1023, goal_pos)) 
 
-            self.get_logger().info(f'Preparando Motor {dxl_id} para {graus} graus (Passo {goal_pos})')
-            
-            # --- REG_WRITE: Prepara o comando na memória do motor, mas não executa ainda ---
-            self.packetHandler.regWrite2ByteTxRx(self.portHandler, dxl_id, ADDR_GOAL_POSITION, goal_pos)
+            # --- Tratamento da Velocidade ---
+            # 0 = Máxima, 1 a 1023 = Proporcional
+            velocidade = max(0, min(1023, velocidade))
 
-        # --- ACTION: Quando a matriz acabar, envia o gatilho para todos os motores executarem juntos ---
-        self.packetHandler.action(self.portHandler, BROADCAST_ID)
-        self.get_logger().info('Comando ACTION (Broadcast) disparado! Motores movendo sincronizadamente.')
+            # 1. Escreve a velocidade no motor imediatamente
+            self.packetHandler.write2ByteTxRx(self.portHandler, dxl_id, ADDR_MOVING_SPEED, velocidade)
+
+            # 2. A biblioteca Dynamixel exige que os 2 bytes sejam separados em Low e High para o SyncWrite
+            param_goal_position = [DXL_LOBYTE(goal_pos), DXL_HIBYTE(goal_pos)]
+
+            # 3. Adiciona o motor e sua posição alvo no "caminhão" de dados do SyncWrite
+            dxl_addparam_result = self.groupSyncWrite.addParam(dxl_id, param_goal_position)
+            if not dxl_addparam_result:
+                self.get_logger().error(f'[ID:{dxl_id}] falhou ao adicionar no SyncWrite')
+
+        # --- Envia o pacote SyncWrite de posições para todos os motores de uma vez só ---
+        dxl_comm_result = self.groupSyncWrite.txPacket()
+        
+        if dxl_comm_result != COMM_SUCCESS:
+            self.get_logger().error(f'Erro de comunicação: {self.packetHandler.getTxRxResult(dxl_comm_result)}')
+        else:
+            self.get_logger().info('SyncWrite executado! Velocidades ajustadas e Motores movidos em sincronia.')
 
     def destroy_node(self):
-        # Desliga o torque de todos os motores da lista ao encerrar
         for dxl_id in ACTIVE_DXL_IDS:
             self.packetHandler.write1ByteTxRx(self.portHandler, dxl_id, ADDR_TORQUE_ENABLE, 0)
             
@@ -90,7 +101,7 @@ def main(args=None):
     node = AX12Controller()
 
     try:
-        rclpy.spin(node)      # Mantém o nó rodando infinitamente
+        rclpy.spin(node)
     except KeyboardInterrupt:
         pass
     finally:
