@@ -14,9 +14,9 @@ class ConexaoRobo:
 
         # --- PERFIL DE REDE (QoS) BLINDADO PARA WI-FI ---
         qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
+            reliability=ReliabilityPolicy.BEST_EFFORT,
             history=HistoryPolicy.KEEP_LAST,
-            depth=10
+            depth=1  # Fila de tamanho 1 é crucial aqui!
         )
 
         # LINHA CORRIGIDA: Estava cortada no final
