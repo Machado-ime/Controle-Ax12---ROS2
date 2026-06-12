@@ -177,12 +177,12 @@ Para ativar mais motores: descomente as linhas correspondentes no `joint_map` e 
 
 Script cliente que publica a sequência de passos. Dois blocos:
 
-- **`ConexaoRobo`**: encapsula o nó ROS — cria o publisher de `/joint_trajectory` com o mesmo QoS do controlador e expõe o método `enviar_passo(nomes, posições, velocidades)`.
-- **`main()`**: contém a **matriz de movimento**, onde cada **linha é uma junta** (na mesma ordem de `nomes_juntas`) e cada **coluna é um passo** da trajetória (7 pontos). Em loop infinito:
-  1. lê a coluna atual da matriz (posição-alvo de cada junta, em radianos);
-  2. calcula a velocidade de cada junta como `|Δposição| / passo`, para que todas cheguem ao alvo ao mesmo tempo;
-  3. publica o passo e dorme `passo + pausa` segundos (1,0 + 0,5 por padrão);
-  4. avança para a próxima coluna, voltando à primeira ao chegar ao fim (ciclo de marcha).
+- **`ConexaoRobo`**: encapsula o nó ROS — cria o publisher de `/joint_trajectory` com o mesmo QoS do controlador, **assina `/hardware_errors`** (alertas do controlador aparecem no terminal) e expõe `enviar_passo(...)`, `aguardar_controlador()` e `esperar(...)`.
+- **`main()`**: contém a **matriz de movimento**, onde cada **linha é uma junta** (na mesma ordem de `nomes_juntas`) e cada **coluna é um passo** da trajetória (7 pontos). O fluxo:
+  1. valida a matriz (nº de linhas = nº de juntas, todas as linhas com o mesmo nº de colunas);
+  2. **espera o `ax12_controller` aparecer na rede** antes do primeiro passo (sem isso, os primeiros comandos se perdem na descoberta do DDS);
+  3. em loop: lê a coluna atual, calcula a velocidade de cada junta como `|Δposição| / passo` (todas chegam ao alvo juntas), publica e espera `passo + pausa` segundos **processando a rede** (alertas chegam mesmo durante a pausa);
+  4. se o controlador publicar `FALHA FATAL` em `/hardware_errors`, a marcha **para sozinha** — não adianta mandar passos para um robô sem hardware.
 
 Para alterar a marcha, edite a `matriz_movimento` (valores em radianos) e/ou os tempos `passo` e `pausa`.
 
