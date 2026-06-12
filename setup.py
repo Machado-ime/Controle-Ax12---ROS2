@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'ax12_controller = ax12_control.ax12_controller:main',
             'send_gait = ax12_control.send_gait:main',
+            'ax12_monitor = ax12_control.ax12_monitor:main',
         ],
     },
 )

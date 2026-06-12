@@ -153,10 +153,11 @@ O robô começa a executar o ciclo de marcha em loop. `Ctrl+C` em qualquer um do
    - converte posição de radianos (±2,618 rad = ±150°) para a escala 0–1023 do AX-12;
    - converte velocidade de rad/s para a escala 1–1023 (fator 86,03);
    - envia **posição + velocidade de todos os motores num único pacote** `GroupSyncWrite` de 4 bytes (endereços 30–33 são contíguos na tabela de controle do AX-12).
-5. **Tolerância a falhas**: se a USB cair em operação, o nó tenta reconectar a cada comando recebido (religando o torque) e, após 10 falhas, desativa a escrita com aviso fatal. Todos os eventos são publicados no tópico **`/hardware_errors`** (`std_msgs/String`, QoS RELIABLE) — monitore com `ros2 topic echo /hardware_errors`.
-6. **No encerramento** (`Ctrl+C`): desliga o torque de todos os motores e fecha a porta.
+5. **Telemetria** (timer, padrão 5 Hz): lê de cada motor, numa única transação de 8 bytes (registradores 36–43), posição, velocidade, **torque** (Present Load), tensão e temperatura. Publica em `/joint_states` (`sensor_msgs/JointState`: rad, rad/s, N·m estimado) e `/diagnostics` (`diagnostic_msgs/DiagnosticArray`: torque %, tensão, temperatura, nível OK/WARN/ERROR). Flags de erro do motor (ex.: **overload**) viram alerta imediato em `/hardware_errors` — fecha o ponto cego de erros durante o movimento.
+6. **Tolerância a falhas**: se a USB cair em operação, o nó tenta reconectar a cada comando recebido (religando o torque) e, após 10 falhas, desativa a escrita com aviso fatal. Todos os eventos são publicados no tópico **`/hardware_errors`** (`std_msgs/String`, QoS RELIABLE) — monitore com `ros2 topic echo /hardware_errors`.
+7. **No encerramento** (`Ctrl+C`): desliga o torque de todos os motores e fecha a porta.
 
-Parâmetros disponíveis (`--ros-args -p nome:=valor`): `device`, `baudrate`, `tentativas_abertura`, `max_falhas_reconexao`, `velocidade_padrao`. Exemplo:
+Parâmetros disponíveis (`--ros-args -p nome:=valor`): `device`, `baudrate`, `tentativas_abertura`, `max_falhas_reconexao`, `velocidade_padrao`, `taxa_leitura` (Hz da telemetria; `0` desliga a leitura). Exemplo:
 
 ```bash
 ros2 run ax12_control ax12_controller --ros-args -p device:=/dev/ttyUSB0
@@ -191,6 +192,16 @@ Script cliente que publica a sequência de passos. Dois blocos:
 
 Para alterar a marcha, edite a `matriz_movimento` (valores em radianos) e/ou os tempos `passo` e `pausa`.
 
+### `ax12_control/ax12_monitor.py` — painel de telemetria
+
+Visualizador que roda no PC de comando (em outro terminal, junto do `send_gait`):
+
+```bash
+ros2 run ax12_control ax12_monitor
+```
+
+Mostra uma tabela atualizada 2×/s no terminal — ângulo, velocidade, torque (% e N·m), tensão, temperatura e status de cada motor — mais os últimos alertas de `/hardware_errors`. Não exige interface gráfica (funciona por SSH). É a ferramenta para flagrar um overload em formação: a coluna de torque sobe e o status muda para `ATENCAO` antes de o motor entrar em proteção.
+
 ### `legacy/` — versões antigas (não compiladas)
 
 - **`controller_antigo.py`**: versão anterior do controlador que, além de escrever, **lia** a posição real dos motores a 10 Hz, publicava em `/joint_states` e reportava erros de hardware (ex.: sobrecarga) no tópico `/hardware_errors`. Usava QoS `RELIABLE/depth=10`, que se mostrou problemático no Wi-Fi.
@@ -201,6 +212,21 @@ Esses arquivos ficam fora do módulo `ax12_control/` de propósito: não são in
 ### `docs/bizuario_ros.md` — diagnóstico
 
 Cola de comandos do ROS 2 (`ros2 node list`, `ros2 topic info`, `ros2 topic echo`, …) e glossário de QoS, útil para depurar a comunicação entre as máquinas.
+
+## Telemetria e visualização
+
+Com o controlador rodando, três formas de ver os dados dos motores (todas no PC, via rede):
+
+| Ferramenta | Para quê | Como |
+|---|---|---|
+| `ax12_monitor` (deste pacote) | Tabela ao vivo no terminal, sem GUI | `ros2 run ax12_control ax12_monitor` |
+| **PlotJuggler** (padrão da indústria) | Curvas ao longo do tempo (posição, torque...) | `sudo apt install ros-$ROS_DISTRO-plotjuggler-ros` e `ros2 run plotjuggler plotjuggler` → aba *Streaming* → assine `/joint_states` |
+| **rqt_plot** | Gráfico rápido de um campo | `ros2 run rqt_plot rqt_plot /joint_states/position[0]` |
+
+> [!NOTE]
+> O "torque" lido é o **Present Load** do AX-12: uma estimativa interna do esforço em % do torque máximo — o AX-12 não tem sensor de torque real. O valor em N·m publicado no campo `effort` de `/joint_states` é aproximado a partir do stall torque nominal (~1,5 N·m a 12 V). É exatamente esse sinal que dispara a proteção de overload, então é o número certo para vigiar.
+
+A leitura usa o barramento junto com os comandos (8 motores × 5 Hz = 40 transações/s, tranquilo a 1 Mbps). Para desligá-la e dedicar o barramento só à escrita: `--ros-args -p taxa_leitura:=0.0`.
 
 ## Detalhes técnicos
 

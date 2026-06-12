@@ -9,11 +9,14 @@ Referência da tabela de controle do AX-12:
 https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
 """
 
+import math
 import time
 
 import rclpy
 from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, qos_profile_sensor_data
+from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
+from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory
 
@@ -28,6 +31,7 @@ from dynamixel_sdk import (
     COMM_SUCCESS,
     DXL_LOBYTE,
     DXL_HIBYTE,
+    DXL_MAKEWORD,
 )
 
 # =====================================================================
@@ -43,6 +47,17 @@ ADDR_MOVING_SPEED       = 32   # 2 bytes (0 a 1023; 0 = velocidade MÁXIMA!)
 # num único pacote SyncWrite: todos os motores partem juntos, já na
 # velocidade certa, sem precisar de uma escrita individual por motor.
 LEN_GOAL_POS_E_SPEED    = 4
+
+# --- Registradores de telemetria (leitura) ---
+# Bloco contíguo 36 a 43: posição(2) + velocidade(2) + carga(2) +
+# tensão(1) + temperatura(1) — lemos os 8 bytes numa ÚNICA transação.
+ADDR_PRESENT_POSITION   = 36
+LEN_BLOCO_TELEMETRIA    = 8
+
+# O AX-12 NÃO tem sensor de torque verdadeiro: o Present Load (end. 40)
+# é a estimativa interna do esforço, em % do torque máximo. Convertemos
+# para N·m usando o stall torque nominal (~1,5 N·m a 12 V) — aproximação.
+TORQUE_MAX_NM           = 1.5
 
 # =====================================================================
 # Fatores de conversão (unidades do ROS <-> unidades do AX-12)
@@ -64,6 +79,7 @@ class AX12HardwareInterface(Node):
         self.declare_parameter('tentativas_abertura', 5)    # tentativas ao iniciar o nó
         self.declare_parameter('max_falhas_reconexao', 10)  # desiste após N reconexões falhas
         self.declare_parameter('velocidade_padrao', 100)    # usada se a msg vier sem velocities
+        self.declare_parameter('taxa_leitura', 5.0)         # Hz da telemetria (0 desliga)
 
         self.device = self.get_parameter('device').value
         self.baudrate = self.get_parameter('baudrate').value
@@ -100,6 +116,19 @@ class AX12HardwareInterface(Node):
         # ao contrário dos comandos de marcha, que são frequentes e descartáveis.
         self.error_publisher = self.create_publisher(String, '/hardware_errors', 10)
 
+        # --- Publishers de telemetria ---
+        # /joint_states usa o perfil padrão de sensores (BEST_EFFORT):
+        # telemetria perdida não deve ser reenviada atrasada.
+        self.joint_state_publisher = self.create_publisher(
+            JointState, '/joint_states', qos_profile_sensor_data)
+        self.diagnostics_publisher = self.create_publisher(
+            DiagnosticArray, '/diagnostics', 10)
+
+        # Memória da leitura: último erro visto por motor (para alertar só
+        # quando MUDA, e não 5x por segundo) e falhas de leitura seguidas
+        self._ultimo_erro_lido = {}
+        self._falhas_leitura = {}
+
         # --- Objetos do Dynamixel SDK ---
         self.portHandler = PortHandler(self.device)
         self.packetHandler = PacketHandler(PROTOCOL_VERSION)
@@ -134,6 +163,11 @@ class AX12HardwareInterface(Node):
             self.listener_callback,
             qos_profile
         )
+
+        # 4. Timer da telemetria (taxa_leitura = 0 desliga a leitura)
+        taxa = self.get_parameter('taxa_leitura').value
+        if taxa > 0:
+            self.create_timer(1.0 / taxa, self.ler_motores_callback)
 
     # =================================================================
     # FUNÇÕES DE APOIO (conexão, torque e avisos de erro)
@@ -311,6 +345,109 @@ class AX12HardwareInterface(Node):
         if result != COMM_SUCCESS:
             self._avisar_erro(
                 f'Falha no SyncWrite: {self.packetHandler.getTxRxResult(result)}')
+
+    # =================================================================
+    # FUNÇÃO DE LEITURA (telemetria: posição, torque, tensão, temperatura)
+    # =================================================================
+
+    def ler_motores_callback(self):
+        """Lê o bloco de telemetria de cada motor e publica nos tópicos.
+
+        Roda no mesmo thread dos comandos (o rclpy executa um callback de
+        cada vez), então leitura e escrita nunca disputam a serial.
+        """
+        if self.desativado or not self.port_ok:
+            return
+
+        agora = self.get_clock().now().to_msg()
+        js = JointState()
+        js.header.stamp = agora
+        diag = DiagnosticArray()
+        diag.header.stamp = agora
+
+        for joint_name, dxl_id in self.joint_map.items():
+            # UMA transação traz os 8 bytes: pos(2) vel(2) carga(2) V(1) °C(1)
+            try:
+                dados, result, error = self.packetHandler.readTxRx(
+                    self.portHandler, dxl_id,
+                    ADDR_PRESENT_POSITION, LEN_BLOCO_TELEMETRIA)
+            except (serial.SerialException, OSError):
+                self._porta_caiu('durante a leitura de telemetria')
+                return
+
+            if result != COMM_SUCCESS:
+                # Motor mudo nesta leitura: avisa só se virar rotina (~5 s)
+                falhas = self._falhas_leitura.get(dxl_id, 0) + 1
+                self._falhas_leitura[dxl_id] = falhas
+                if falhas == 25:
+                    self._avisar_erro(
+                        f'Motor ID {dxl_id} ({joint_name}) sem responder '
+                        f'a leitura ha {falhas} ciclos seguidos.')
+                continue
+            self._falhas_leitura[dxl_id] = 0
+
+            # --- Conversões (inverso das fórmulas de escrita) ---
+            pos_raw = DXL_MAKEWORD(dados[0], dados[1])
+            vel_raw = DXL_MAKEWORD(dados[2], dados[3])
+            carga_raw = DXL_MAKEWORD(dados[4], dados[5])
+            tensao = dados[6] / 10.0        # ex.: 119 -> 11,9 V
+            temperatura = float(dados[7])   # já vem em °C
+
+            pos_rad = (pos_raw / POS_POR_RAD) - LIMITE_RAD
+
+            # Velocidade e carga usam 10 bits + bit de direção (>=1024 = horário)
+            vel_rad_s = (vel_raw & 0x3FF) / UNIDADES_POR_RAD_S
+            if vel_raw >= 1024:
+                vel_rad_s = -vel_rad_s
+
+            carga_pct = (carga_raw & 0x3FF) / 10.23   # % do torque máximo
+            if carga_raw >= 1024:
+                carga_pct = -carga_pct
+            torque_nm = carga_pct / 100.0 * TORQUE_MAX_NM  # estimativa!
+
+            # --- Monta o /joint_states (padrão ROS: rad, rad/s, N·m) ---
+            js.name.append(joint_name)
+            js.position.append(pos_rad)
+            js.velocity.append(vel_rad_s)
+            js.effort.append(torque_nm)
+
+            # --- Flags de erro do motor (overload, tensão, temperatura...) ---
+            # Alerta apenas quando o erro MUDA, para não inundar o tópico
+            if error != self._ultimo_erro_lido.get(dxl_id, 0):
+                self._ultimo_erro_lido[dxl_id] = error
+                if error != 0:
+                    self._avisar_erro(
+                        f'Motor ID {dxl_id} ({joint_name}) com erro de hardware: '
+                        f'{self.packetHandler.getRxPacketError(error)}')
+                else:
+                    self.get_logger().info(
+                        f'Motor ID {dxl_id} ({joint_name}): erro de hardware limpou.')
+
+            # --- Monta o /diagnostics (tensão, temperatura, torque, erro) ---
+            status = DiagnosticStatus()
+            status.name = f'ax12/{joint_name}'
+            status.hardware_id = str(dxl_id)
+            if error != 0:
+                status.level = DiagnosticStatus.ERROR
+                status.message = self.packetHandler.getRxPacketError(error)
+            elif temperatura >= 65.0 or abs(carga_pct) >= 80.0:
+                status.level = DiagnosticStatus.WARN
+                status.message = 'Perto do limite (temperatura ou torque)'
+            else:
+                status.level = DiagnosticStatus.OK
+                status.message = 'OK'
+            status.values = [
+                KeyValue(key='angulo_graus', value=f'{math.degrees(pos_rad):.1f}'),
+                KeyValue(key='torque_pct', value=f'{carga_pct:.1f}'),
+                KeyValue(key='torque_nm_estimado', value=f'{torque_nm:.2f}'),
+                KeyValue(key='tensao_v', value=f'{tensao:.1f}'),
+                KeyValue(key='temperatura_c', value=f'{temperatura:.0f}'),
+            ]
+            diag.status.append(status)
+
+        if js.name:
+            self.joint_state_publisher.publish(js)
+            self.diagnostics_publisher.publish(diag)
 
     # =================================================================
     # ENCERRAMENTO SEGURO
