@@ -71,25 +71,22 @@ class AX12HardwareInterface(Node):
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
 
         # Mapa das juntas (nome ROS -> ID do motor no barramento)
+        # ATENÇÃO: o sufixo numérico do NOME é histórico e NÃO é o ID real
+        # do motor (ex.: PD_tornozelo_pitch_1 é o motor de ID 18).
+        # O ID que vale é sempre o número à direita.
         self.joint_map = {
-            'PD_tornozelo_pitch_1': 1,
-            'PE_tornozelo_pitch_2': 2,
-            #'PD_tornozelo_roll_3': 3,
-            #'PE_tornozelo_roll_4': 4,
-            'PD_joelho_pitch_5': 5,
-            'PE_joelho_pitch_6': 6,
-            'PD_quadril_pitch_7': 7,
-            'PE_quadril_pitch_8': 8,
-            #'PD_quadril-roll_9': 9,
-            #'PE_quadril-roll_10': 10,
-            #'BD_ombro-roll_11': 11,
-            #'BE_ombro-roll_12': 12,
-            #'BD_ombro-pitch_13': 13,
-            #'BE_ombro-pitch_14': 14,
-            #'BD_cotovelo_15': 15,
-            #'BE_cotovelo_16': 16,
-            #'C_pescoco_tilt_17': 17,
-            #'C_pescoco_pan_18': 18
+            'PD_tornozelo_pitch_1': 18,
+            'PE_tornozelo_pitch_2': 13,
+            'PD_tornozelo_roll_3': 17,   # ativos, mas fora da marcha atual:
+            'PE_tornozelo_roll_4': 12,   # recebem torque e seguram a posição
+            'PD_joelho_pitch_5': 16,
+            'PE_joelho_pitch_6': 11,
+            'PD_quadril_pitch_7': 15,
+            'PE_quadril_pitch_8': 10,
+            # Juntas ainda sem ID no barramento atual (quadril roll, braços,
+            # pescoço): adicione aqui quando forem ligadas — cuidado para
+            # NÃO repetir um ID já usado acima (ID duplicado = dois nomes
+            # comandando o mesmo motor físico).
         }
         self.active_ids = list(self.joint_map.values())
 

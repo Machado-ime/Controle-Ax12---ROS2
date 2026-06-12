@@ -127,7 +127,11 @@ def main():
         [ 0.0,    -0.7854, -0.6981,  0.4800,  0.4800,  0.3491,  0.0   ],  # PE_quadril
     ]
 
-    # Nomes das juntas: PRECISAM ser idênticos ao joint_map do controlador
+    # Nomes das juntas: PRECISAM ser idênticos ao joint_map do controlador.
+    # Os rolls de tornozelo (roll_3 e roll_4) estão ativos no controlador,
+    # mas de propósito NÃO entram na marcha: recebem torque e ficam rígidos
+    # na posição em que estiverem. Para movê-los, acrescente o nome aqui e
+    # uma linha correspondente na matriz_movimento, na MESMA ordem.
     nomes_juntas = [
         'PD_tornozelo_pitch_1',
         'PE_tornozelo_pitch_2',

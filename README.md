@@ -145,7 +145,7 @@ O robô começa a executar o ciclo de marcha em loop. `Ctrl+C` em qualquer um do
 
 É o nó ROS 2 `ax12_hardware_interface`, o único processo que toca o barramento serial dos motores. O fluxo dele:
 
-1. **Mapa de juntas** (`joint_map`): associa o nome de cada junta ao ID do motor no barramento. Atualmente 6 juntas ativas; as demais estão comentadas (ver tabela abaixo).
+1. **Mapa de juntas** (`joint_map`): associa o nome de cada junta ao ID do motor no barramento. Atualmente 8 juntas ativas — 6 comandadas pela marcha e 2 rolls de tornozelo travados (ver tabela abaixo).
 2. **Abertura da serial com tentativas**: porta e baudrate são **parâmetros ROS** (padrão `/dev/ttyACM0`, 1 Mbps); o nó tenta abrir 5 vezes antes de desistir (útil quando a USB demora a enumerar no boot da Pi).
 3. **Liga o torque** de cada motor com pausa de 50 ms entre eles, conferindo se cada um respondeu (`COMM_SUCCESS`).
 4. **Assina `/joint_trajectory`** (`trajectory_msgs/JointTrajectory`) e, a cada mensagem:
@@ -162,16 +162,21 @@ Parâmetros disponíveis (`--ros-args -p nome:=valor`): `device`, `baudrate`, `t
 ros2 run ax12_control ax12_controller --ros-args -p device:=/dev/ttyUSB0
 ```
 
-| Junta                  | ID | Junta (comentada)      | ID |
-|------------------------|----|------------------------|----|
-| `PD_tornozelo_pitch_1` | 1  | tornozelo roll (D/E)   | 3–4 |
-| `PE_tornozelo_pitch_2` | 2  | quadril roll (D/E)     | 9–10 |
-| `PD_joelho_pitch_5`    | 5  | ombros e cotovelos     | 11–16 |
-| `PE_joelho_pitch_6`    | 6  | pescoço (tilt/pan)     | 17–18 |
-| `PD_quadril_pitch_7`   | 7  |                        |    |
-| `PE_quadril_pitch_8`   | 8  |                        |    |
+| Junta                  | ID do motor | Comandada pela marcha? |
+|------------------------|-------------|------------------------|
+| `PD_tornozelo_pitch_1` | 18          | Sim |
+| `PE_tornozelo_pitch_2` | 13          | Sim |
+| `PD_tornozelo_roll_3`  | 17          | Não — torque ligado, posição travada |
+| `PE_tornozelo_roll_4`  | 12          | Não — torque ligado, posição travada |
+| `PD_joelho_pitch_5`    | 16          | Sim |
+| `PE_joelho_pitch_6`    | 11          | Sim |
+| `PD_quadril_pitch_7`   | 15          | Sim |
+| `PE_quadril_pitch_8`   | 10          | Sim |
 
-Para ativar mais motores: descomente as linhas correspondentes no `joint_map` e acrescente as linhas equivalentes na `matriz_movimento` e em `nomes_juntas` do `send_gait.py`.
+> [!WARNING]
+> O sufixo numérico do **nome** da junta é histórico e **não corresponde ao ID real** do motor (ex.: `PD_tornozelo_pitch_1` é o motor de ID **18**). O ID que vale é o da tabela acima / do `joint_map`.
+
+As demais juntas (quadril roll, braços e pescoço) ainda não têm ID no barramento atual. Para ativar uma junta nova: adicione-a ao `joint_map` do `ax12_controller.py` (sem repetir ID!) e, se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do `send_gait.py`, na mesma ordem.
 
 ### `ax12_control/send_gait.py` — gerador de marcha
 
