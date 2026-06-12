@@ -1,0 +1,15 @@
+# Artefatos de build do colcon (workspace)
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Editores
+.vscode/
+.idea/
+*.swp

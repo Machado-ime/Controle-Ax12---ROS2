@@ -103,8 +103,8 @@ def main():
             posicoes_alvo = []
             velocidades_alvo = []
 
-            # Lê linha por linha (i vai de 0 a 17)
-            for i in range(8):
+            # Lê linha por linha da matriz (uma linha por junta ativa)
+            for i in range(len(nomes_juntas)):
                 # 1. Lê a célula exata: linha do motor 'i', coluna do passo 'current_index'
                 rad_alvo = matriz_movimento[i][current_index]
 
