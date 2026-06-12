@@ -1,67 +1,134 @@
 # Controle AX-12 — ROS 2
 
+[![ROS 2](https://img.shields.io/badge/ROS%202-Humble-blue)](https://docs.ros.org/en/humble/)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-yellow)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 Pacote ROS 2 (`ax12_control`) para controle dos servomotores **Dynamixel AX-12** de um robô bípede. O sistema é distribuído em duas máquinas que se comunicam pela rede (DDS/Wi-Fi):
 
 - **Raspberry Pi** (conectada aos motores via USB): roda o nó `ax12_controller`, que recebe trajetórias e escreve nos motores.
 - **PC de comando**: roda o `send_gait`, que publica a sequência de marcha.
 
 ```
-   PC de comando                          Raspberry Pi
-┌─────────────────┐                  ┌──────────────────────┐      USB/serial
-│    send_gait    │ ──────────────▶  │   ax12_controller    │ ───────────────▶  Motores AX-12
-└─────────────────┘  /joint_trajectory └────────────────────┘   (1 Mbps, Protocolo 1.0)
-                    (JointTrajectory,
-                  QoS BEST_EFFORT, depth=1)
+   PC de comando                              Raspberry Pi
+┌─────────────────┐    /joint_trajectory   ┌──────────────────┐    USB/serial     ┌──────────────┐
+│    send_gait    │ ─────────────────────▶ │  ax12_controller │ ────────────────▶ │ Motores AX-12│
+└─────────────────┘   (JointTrajectory,    └──────────────────┘  1 Mbps, Proto 1.0└──────────────┘
+                       QoS BEST_EFFORT,
+                          depth = 1)
 ```
+
+## Sumário
+
+- [Estrutura do repositório](#estrutura-do-repositório)
+- [Pré-requisitos](#pré-requisitos)
+- [Instalação](#instalação)
+- [Como rodar](#como-rodar)
+- [Os códigos explicados](#os-códigos-explicados)
+- [Detalhes técnicos](#detalhes-técnicos)
+- [Solução de problemas](#solução-de-problemas)
+- [Licença](#licença)
 
 ## Estrutura do repositório
 
 ```
-├── package.xml              # Manifesto ROS 2 (dependências)
-├── setup.py                 # Entry points dos executáveis
-├── setup.cfg
-├── resource/                # Marcador do ament index
+Controle-Ax12---ROS2/
+├── package.xml              # Manifesto ROS 2 (nome do pacote e dependências)
+├── setup.py                 # Instalador: define os executáveis do ros2 run
+├── setup.cfg                # Destino dos executáveis no install/
+├── resource/
+│   └── ax12_control         # Marcador do ament index (não editar)
 ├── ax12_control/            # Código-fonte (módulo Python)
-│   ├── ax12_controller.py   # Nó de interface de hardware (Raspberry Pi)
-│   └── send_gait.py         # Cliente de marcha (PC)
+│   ├── __init__.py
+│   ├── ax12_controller.py   # Nó de interface de hardware (roda na Raspberry Pi)
+│   └── send_gait.py         # Cliente de marcha (roda no PC de comando)
 ├── docs/
-│   └── bizuario_ros.md      # Cola de comandos úteis do ROS 2
-└── legacy/                  # Versões antigas (referência, fora do build)
+│   └── bizuario_ros.md      # Cola de comandos úteis do ROS 2 para diagnóstico
+├── legacy/                  # Versões antigas (referência histórica, fora do build)
+│   ├── controller_antigo.py # Controlador com leitura de posição e tópico de erros
+│   └── send_antigo.py       # Cliente antigo com listas separadas por articulação
+├── LICENSE
+└── README.md
 ```
 
 ## Pré-requisitos
 
-- Ubuntu com **ROS 2** instalado (testado com Humble) nas duas máquinas, na mesma rede e com o mesmo `ROS_DOMAIN_ID`.
-- Na Raspberry Pi: **Dynamixel SDK**:
+| Requisito | Versão | Onde baixar / instalar |
+|---|---|---|
+| Ubuntu | 22.04 (Jammy) | [releases.ubuntu.com/22.04](https://releases.ubuntu.com/22.04/) |
+| ROS 2 | Humble | [Guia oficial de instalação](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html) |
+| colcon | — | `sudo apt install python3-colcon-common-extensions` |
+| Dynamixel SDK | 3.x | [Manual da ROBOTIS](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/overview/) — comando abaixo |
+| git | — | `sudo apt install git` |
+
+**Instalação resumida dos pré-requisitos** (após instalar o Ubuntu 22.04):
 
 ```bash
-sudo apt install ros-$ROS_DISTRO-dynamixel-sdk
-# ou, se não houver pacote apt para sua distro:
-pip3 install dynamixel-sdk
+# 1. ROS 2 Humble (siga o guia oficial; resumo dos comandos principais)
+sudo apt update && sudo apt install -y software-properties-common curl
+sudo add-apt-repository universe
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
+     -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
+     http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | \
+     sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+sudo apt update && sudo apt install -y ros-humble-ros-base
+
+# 2. Ferramenta de build
+sudo apt install -y python3-colcon-common-extensions
+
+# 3. Dynamixel SDK (necessário apenas na Raspberry Pi, que fala com os motores)
+sudo apt install -y ros-humble-dynamixel-sdk
+# alternativa, caso o pacote apt não exista para sua plataforma:
+# pip3 install dynamixel-sdk
 ```
 
-## Instalação (nas duas máquinas)
+> [!NOTE]
+> Os passos acima devem ser feitos **nas duas máquinas** (Raspberry Pi e PC de comando), exceto o Dynamixel SDK, que só é obrigatório na Raspberry Pi.
+
+## Instalação
+
+Os comandos abaixo criam o workspace `ax12_control_ws`, clonam o repositório, compilam o pacote e deixam o ambiente configurado **permanentemente** (via `~/.bashrc`):
 
 ```bash
-mkdir -p ~/ros2_ws/src
-cd ~/ros2_ws/src
+# 1. Cria o workspace e clona o repositório dentro de src/
+mkdir -p ~/ax12_control_ws/src
+cd ~/ax12_control_ws/src
 git clone https://github.com/Machado-ime/Controle-Ax12---ROS2.git
-cd ~/ros2_ws
+
+# 2. Compila o pacote
+cd ~/ax12_control_ws
+source /opt/ros/humble/setup.bash
 colcon build --packages-select ax12_control
-source install/setup.bash
+
+# 3. Torna o ambiente permanente (ROS 2 + workspace em todo terminal novo)
+echo "source /opt/ros/humble/setup.bash"             >> ~/.bashrc
+echo "source ~/ax12_control_ws/install/setup.bash"   >> ~/.bashrc
+echo "export ROS_DOMAIN_ID=0"                        >> ~/.bashrc
+source ~/.bashrc
 ```
 
-> Adicione `source ~/ros2_ws/install/setup.bash` ao seu `~/.bashrc` para não precisar repetir a cada terminal.
+> [!IMPORTANT]
+> O `ROS_DOMAIN_ID` precisa ser **o mesmo** nas duas máquinas para que elas se enxerguem na rede. O valor `0` é o padrão; se houver outros robôs/ROS na mesma rede, escolha outro número (0–101) e use-o nas duas máquinas.
 
-## Uso
+Para verificar a instalação:
 
-**1. Na Raspberry Pi** (com os motores ligados na porta `/dev/ttyACM0`):
+```bash
+ros2 pkg executables ax12_control
+# saída esperada:
+# ax12_control ax12_controller
+# ax12_control send_gait
+```
+
+## Como rodar
+
+**1. Na Raspberry Pi** (motores ligados na porta `/dev/ttyACM0` e fonte de alimentação conectada):
 
 ```bash
 ros2 run ax12_control ax12_controller
 ```
 
-O nó abre a serial, liga o torque dos motores mapeados e fica escutando o tópico `/joint_trajectory`.
+Saída esperada: `Porta aberta com sucesso!` seguido de `Torque LIGADO`. O nó fica aguardando trajetórias.
 
 **2. No PC de comando:**
 
@@ -69,34 +136,78 @@ O nó abre a serial, liga o torque dos motores mapeados e fica escutando o tópi
 ros2 run ax12_control send_gait
 ```
 
-Publica o ciclo de marcha em loop. `Ctrl+C` para parar (o controlador desliga o torque ao ser encerrado).
+O robô começa a executar o ciclo de marcha em loop. `Ctrl+C` em qualquer um dos lados encerra com segurança (o controlador desliga o torque dos motores ao sair).
 
-## Mapa de juntas
+## Os códigos explicados
 
-| Junta                  | ID do motor |
-|------------------------|-------------|
-| `PD_tornozelo_pitch_1` | 1           |
-| `PE_tornozelo_pitch_2` | 2           |
-| `PD_joelho_pitch_5`    | 5           |
-| `PE_joelho_pitch_6`    | 6           |
-| `PD_quadril_pitch_7`   | 7           |
-| `PE_quadril_pitch_8`   | 8           |
+### `ax12_control/ax12_controller.py` — interface de hardware
 
-Os demais motores (rolls, braços e pescoço, IDs 3–4 e 9–18) estão comentados no código e podem ser reativados em `ax12_control/ax12_controller.py` (`joint_map`) e `ax12_control/send_gait.py` (`matriz_movimento` e `nomes_juntas`).
+É o nó ROS 2 `ax12_hardware_interface`, o único processo que toca o barramento serial dos motores. O fluxo dele:
+
+1. **Mapa de juntas** (`joint_map`): associa o nome de cada junta ao ID do motor no barramento. Atualmente 6 juntas ativas; as demais estão comentadas (ver tabela abaixo).
+2. **Abertura da serial**: porta `/dev/ttyACM0`, 1 Mbps, Protocolo Dynamixel 1.0.
+3. **Liga o torque** de cada motor com pausa de 50 ms entre eles, para não derrubar a fonte com o pico de corrente.
+4. **Assina `/joint_trajectory`** (`trajectory_msgs/JointTrajectory`) e, a cada mensagem:
+   - converte posição de radianos (±2,618 rad = ±150°) para a escala 0–1023 do AX-12;
+   - converte velocidade de rad/s para a escala 1–1023 (fator 86,03);
+   - escreve a velocidade de cada motor e envia **todas as posições de uma vez** com `GroupSyncWrite`, para que os motores partam juntos.
+5. **No encerramento** (`Ctrl+C`): desliga o torque de todos os motores e fecha a porta.
+
+| Junta                  | ID | Junta (comentada)      | ID |
+|------------------------|----|------------------------|----|
+| `PD_tornozelo_pitch_1` | 1  | tornozelo roll (D/E)   | 3–4 |
+| `PE_tornozelo_pitch_2` | 2  | quadril roll (D/E)     | 9–10 |
+| `PD_joelho_pitch_5`    | 5  | ombros e cotovelos     | 11–16 |
+| `PE_joelho_pitch_6`    | 6  | pescoço (tilt/pan)     | 17–18 |
+| `PD_quadril_pitch_7`   | 7  |                        |    |
+| `PE_quadril_pitch_8`   | 8  |                        |    |
+
+Para ativar mais motores: descomente as linhas correspondentes no `joint_map` e acrescente as linhas equivalentes na `matriz_movimento` e em `nomes_juntas` do `send_gait.py`.
+
+### `ax12_control/send_gait.py` — gerador de marcha
+
+Script cliente que publica a sequência de passos. Dois blocos:
+
+- **`ConexaoRobo`**: encapsula o nó ROS — cria o publisher de `/joint_trajectory` com o mesmo QoS do controlador e expõe o método `enviar_passo(nomes, posições, velocidades)`.
+- **`main()`**: contém a **matriz de movimento**, onde cada **linha é uma junta** (na mesma ordem de `nomes_juntas`) e cada **coluna é um passo** da trajetória (7 pontos). Em loop infinito:
+  1. lê a coluna atual da matriz (posição-alvo de cada junta, em radianos);
+  2. calcula a velocidade de cada junta como `|Δposição| / passo`, para que todas cheguem ao alvo ao mesmo tempo;
+  3. publica o passo e dorme `passo + pausa` segundos (1,0 + 0,5 por padrão);
+  4. avança para a próxima coluna, voltando à primeira ao chegar ao fim (ciclo de marcha).
+
+Para alterar a marcha, edite a `matriz_movimento` (valores em radianos) e/ou os tempos `passo` e `pausa`.
+
+### `legacy/` — versões antigas (não compiladas)
+
+- **`controller_antigo.py`**: versão anterior do controlador que, além de escrever, **lia** a posição real dos motores a 10 Hz, publicava em `/joint_states` e reportava erros de hardware (ex.: sobrecarga) no tópico `/hardware_errors`. Usava QoS `RELIABLE/depth=10`, que se mostrou problemático no Wi-Fi.
+- **`send_antigo.py`**: cliente correspondente, com três listas separadas (tornozelo/joelho/quadril) em vez da matriz por junta.
+
+Esses arquivos ficam fora do módulo `ax12_control/` de propósito: não são instalados pelo build e servem só de referência (ex.: para reintroduzir a leitura de posição no futuro).
+
+### `docs/bizuario_ros.md` — diagnóstico
+
+Cola de comandos do ROS 2 (`ros2 node list`, `ros2 topic info`, `ros2 topic echo`, …) e glossário de QoS, útil para depurar a comunicação entre as máquinas.
 
 ## Detalhes técnicos
 
 - **Mensagem**: `trajectory_msgs/JointTrajectory` — posições em **radianos**, velocidades em **rad/s**.
-- **QoS**: `BEST_EFFORT`, `KEEP_LAST`, `depth=1` nos dois lados (precisa ser igual!). Escolha deliberada para Wi-Fi: comando perdido é descartado em vez de reenviado atrasado.
+- **QoS**: `BEST_EFFORT`, `KEEP_LAST`, `depth=1` nos dois lados (**precisa ser igual**, ou o subscriber não recebe nada). Escolha deliberada para Wi-Fi: um comando perdido é descartado em vez de reenviado atrasado — comando velho chegando fora de hora é pior que comando perdido.
 - **Conversões** (feitas no controlador):
-  - Posição: ±2,618 rad (±150°) → 0–1023 (resolução do AX-12).
-  - Velocidade: rad/s × 86,03 → 1–1023.
-- A escrita das posições usa `GroupSyncWrite` para que todos os motores iniciem o movimento simultaneamente.
+  - Posição: `goal = (rad + 2,618) × 1023 / 5,236`, saturada em 0–1023.
+  - Velocidade: `vel = |rad/s| × 86,03`, saturada em 1–1023 (0 significaria "velocidade máxima" no AX-12, por isso o mínimo é 1).
 
-## Diagnóstico
+## Solução de problemas
 
-Comandos úteis de inspeção (nós, tópicos, QoS) em [docs/bizuario_ros.md](docs/bizuario_ros.md).
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| `Falha ao abrir a porta!` | Porta errada ou sem permissão | Confira com `ls /dev/ttyACM*`; ajuste `DEVICENAME` no código. Permissão: `sudo usermod -aG dialout $USER` e relogue |
+| `send_gait` roda mas o robô não se mexe | Máquinas em domínios diferentes ou QoS incompatível | Confirme `echo $ROS_DOMAIN_ID` igual nos dois lados; `ros2 topic info /joint_trajectory -v` deve listar 1 publisher e 1 subscription |
+| `Package 'ax12_control' not found` | Workspace não carregado | `source ~/ax12_control_ws/install/setup.bash` (confira se está no `~/.bashrc`) |
+| Motores desligam ao ligar o torque | Fonte insuficiente para o pico de corrente | Verifique a fonte; o código já escalona o torque com 50 ms entre motores |
+| Nós não se enxergam no Wi-Fi | Firewall ou multicast bloqueado | Teste com `ros2 multicast receive/send`; libere o firewall (`sudo ufw allow in proto udp`) |
+
+Mais comandos de diagnóstico em [docs/bizuario_ros.md](docs/bizuario_ros.md).
 
 ## Licença
 
-[MIT](LICENSE)
+Distribuído sob a licença MIT — veja [LICENSE](LICENSE).
