@@ -172,8 +172,13 @@ class AX12HardwareInterface(Node):
         return False
 
     def _ligar_torque(self):
-        """Liga o torque motor a motor, conferindo se cada um respondeu."""
-        for dxl_id in self.active_ids:
+        """Liga o torque motor a motor, reportando o resultado de CADA um.
+
+        Quem respondeu ganha confirmação no log; quem não respondeu vira
+        aviso em /hardware_errors. No final, um resumo X/N conectados.
+        """
+        conectados = 0
+        for joint_name, dxl_id in self.joint_map.items():
             try:
                 result, error = self.packetHandler.write1ByteTxRx(
                     self.portHandler, dxl_id, ADDR_TORQUE_ENABLE, 1)
@@ -182,14 +187,30 @@ class AX12HardwareInterface(Node):
                 return
             if result != COMM_SUCCESS:
                 self._avisar_erro(
-                    f'Motor ID {dxl_id} nao respondeu ao ligar torque: '
+                    f'Motor ID {dxl_id} ({joint_name}) NAO respondeu ao ligar torque: '
                     f'{self.packetHandler.getTxRxResult(result)}')
             elif error != 0:
+                # Respondeu (está no barramento), mas reclamando de algo
+                # (ex.: sobrecarga, tensão fora da faixa)
+                conectados += 1
                 self._avisar_erro(
-                    f'Motor ID {dxl_id} reportou erro de hardware: '
+                    f'Motor ID {dxl_id} ({joint_name}) conectou, MAS reportou erro: '
                     f'{self.packetHandler.getRxPacketError(error)}')
+            else:
+                conectados += 1
+                self.get_logger().info(
+                    f'Motor ID {dxl_id} ({joint_name}): conectado, torque LIGADO.')
             # VITAL: 50 ms para a fonte estabilizar antes de ligar o próximo
             time.sleep(0.05)
+
+        # --- Resumo final: tudo certo é info; motor faltando é erro publicado ---
+        total = len(self.joint_map)
+        if conectados == total:
+            self.get_logger().info(f'Todos os {total} motores conectados.')
+        else:
+            self._avisar_erro(
+                f'Apenas {conectados}/{total} motores responderam! '
+                'Verifique cabo, energia e IDs dos ausentes.')
 
     def _porta_caiu(self, contexto):
         """Marca a porta como caída e avisa. A reconexão acontece no callback."""
