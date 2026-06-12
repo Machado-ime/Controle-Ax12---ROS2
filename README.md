@@ -146,13 +146,21 @@ O robô começa a executar o ciclo de marcha em loop. `Ctrl+C` em qualquer um do
 É o nó ROS 2 `ax12_hardware_interface`, o único processo que toca o barramento serial dos motores. O fluxo dele:
 
 1. **Mapa de juntas** (`joint_map`): associa o nome de cada junta ao ID do motor no barramento. Atualmente 6 juntas ativas; as demais estão comentadas (ver tabela abaixo).
-2. **Abertura da serial**: porta `/dev/ttyACM0`, 1 Mbps, Protocolo Dynamixel 1.0.
-3. **Liga o torque** de cada motor com pausa de 50 ms entre eles, para não derrubar a fonte com o pico de corrente.
+2. **Abertura da serial com tentativas**: porta e baudrate são **parâmetros ROS** (padrão `/dev/ttyACM0`, 1 Mbps); o nó tenta abrir 5 vezes antes de desistir (útil quando a USB demora a enumerar no boot da Pi).
+3. **Liga o torque** de cada motor com pausa de 50 ms entre eles, conferindo se cada um respondeu (`COMM_SUCCESS`).
 4. **Assina `/joint_trajectory`** (`trajectory_msgs/JointTrajectory`) e, a cada mensagem:
+   - valida a mensagem (malformada = descartada com aviso);
    - converte posição de radianos (±2,618 rad = ±150°) para a escala 0–1023 do AX-12;
    - converte velocidade de rad/s para a escala 1–1023 (fator 86,03);
-   - escreve a velocidade de cada motor e envia **todas as posições de uma vez** com `GroupSyncWrite`, para que os motores partam juntos.
-5. **No encerramento** (`Ctrl+C`): desliga o torque de todos os motores e fecha a porta.
+   - envia **posição + velocidade de todos os motores num único pacote** `GroupSyncWrite` de 4 bytes (endereços 30–33 são contíguos na tabela de controle do AX-12).
+5. **Tolerância a falhas**: se a USB cair em operação, o nó tenta reconectar a cada comando recebido (religando o torque) e, após 10 falhas, desativa a escrita com aviso fatal. Todos os eventos são publicados no tópico **`/hardware_errors`** (`std_msgs/String`, QoS RELIABLE) — monitore com `ros2 topic echo /hardware_errors`.
+6. **No encerramento** (`Ctrl+C`): desliga o torque de todos os motores e fecha a porta.
+
+Parâmetros disponíveis (`--ros-args -p nome:=valor`): `device`, `baudrate`, `tentativas_abertura`, `max_falhas_reconexao`, `velocidade_padrao`. Exemplo:
+
+```bash
+ros2 run ax12_control ax12_controller --ros-args -p device:=/dev/ttyUSB0
+```
 
 | Junta                  | ID | Junta (comentada)      | ID |
 |------------------------|----|------------------------|----|
