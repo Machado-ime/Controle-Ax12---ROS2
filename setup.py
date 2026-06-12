@@ -17,7 +17,9 @@ setup(
     maintainer_email='machado.fernando@ime.eb.br',
     description='Controle de servomotores Dynamixel AX-12 via ROS 2 para robo bipede.',
     license='MIT',
-    tests_require=['pytest'],
+    extras_require={
+        'test': ['pytest'],
+    },
     entry_points={
         'console_scripts': [
             'ax12_controller = ax12_control.ax12_controller:main',

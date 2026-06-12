@@ -1,7 +1,7 @@
 # Controle AX-12 — ROS 2
 
-[![ROS 2](https://img.shields.io/badge/ROS%202-Humble-blue)](https://docs.ros.org/en/humble/)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-yellow)](https://www.python.org/)
+[![ROS 2](https://img.shields.io/badge/ROS%202-Jazzy-blue)](https://docs.ros.org/en/jazzy/)
+[![Python](https://img.shields.io/badge/Python-3.12%2B-yellow)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 Pacote ROS 2 (`ax12_control`) para controle dos servomotores **Dynamixel AX-12** de um robô bípede. O sistema é distribuído em duas máquinas que se comunicam pela rede (DDS/Wi-Fi):
@@ -55,30 +55,31 @@ Controle-Ax12---ROS2/
 
 | Requisito | Versão | Onde baixar / instalar |
 |---|---|---|
-| Ubuntu | 22.04 (Jammy) | [releases.ubuntu.com/22.04](https://releases.ubuntu.com/22.04/) |
-| ROS 2 | Humble | [Guia oficial de instalação](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html) |
+| Ubuntu | 24.04 (Noble) | [releases.ubuntu.com/24.04](https://releases.ubuntu.com/24.04/) |
+| ROS 2 | Jazzy | [Guia oficial de instalação](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) |
 | colcon | — | `sudo apt install python3-colcon-common-extensions` |
 | Dynamixel SDK | 3.x | [Manual da ROBOTIS](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/overview/) — comando abaixo |
 | git | — | `sudo apt install git` |
 
-**Instalação resumida dos pré-requisitos** (após instalar o Ubuntu 22.04):
+**Instalação resumida dos pré-requisitos** (após instalar o Ubuntu 24.04):
 
 ```bash
-# 1. ROS 2 Humble (siga o guia oficial; resumo dos comandos principais)
+# 1. ROS 2 Jazzy (siga o guia oficial; resumo dos comandos principais)
 sudo apt update && sudo apt install -y software-properties-common curl
 sudo add-apt-repository universe
-sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key \
-     -o /usr/share/keyrings/ros-archive-keyring.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] \
-     http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | \
-     sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
-sudo apt update && sudo apt install -y ros-humble-ros-base
+
+# Adiciona o repositório apt oficial do ROS 2 (método atual, via ros2-apt-source)
+export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
+curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo $VERSION_CODENAME)_all.deb"
+sudo apt install -y /tmp/ros2-apt-source.deb
+
+sudo apt update && sudo apt install -y ros-jazzy-ros-base
 
 # 2. Ferramenta de build
 sudo apt install -y python3-colcon-common-extensions
 
 # 3. Dynamixel SDK (necessário apenas na Raspberry Pi, que fala com os motores)
-sudo apt install -y ros-humble-dynamixel-sdk
+sudo apt install -y ros-jazzy-dynamixel-sdk
 # alternativa, caso o pacote apt não exista para sua plataforma:
 # pip3 install dynamixel-sdk
 ```
@@ -98,11 +99,11 @@ git clone https://github.com/Machado-ime/Controle-Ax12---ROS2.git
 
 # 2. Compila o pacote
 cd ~/ax12_control_ws
-source /opt/ros/humble/setup.bash
+source /opt/ros/jazzy/setup.bash
 colcon build --packages-select ax12_control
 
 # 3. Torna o ambiente permanente (ROS 2 + workspace em todo terminal novo)
-echo "source /opt/ros/humble/setup.bash"             >> ~/.bashrc
+echo "source /opt/ros/jazzy/setup.bash"              >> ~/.bashrc
 echo "source ~/ax12_control_ws/install/setup.bash"   >> ~/.bashrc
 echo "export ROS_DOMAIN_ID=0"                        >> ~/.bashrc
 source ~/.bashrc
