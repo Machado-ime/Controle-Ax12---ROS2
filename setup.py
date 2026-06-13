@@ -11,6 +11,11 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
+    # Faz o(s) YAML(s) de marcha viajarem junto com o módulo na instalação,
+    # para que o caminho padrão (otimizada.yaml ao lado do send_gait) seja
+    # encontrado também depois do colcon build.
+    package_data={package_name: ['*.yaml']},
+    include_package_data=True,
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='Fernando Machado',

@@ -1,0 +1,44 @@
+# =====================================================================
+# MATRIZ DE MOVIMENTO "cin_inve" — gerada da cinemática inversa dos pés.
+# Origem: angulos.mat (variavel angulos_rad, 8 juntas x 4 etapas).
+#
+# Mesmo formato/uso do otimizada.yaml (lido pelo send_gait.py):
+#   passo  : duração da transição entre duas poses (segundos)
+#   pausa  : repouso extra após cada transição (segundos)
+#   nomes_juntas    : nomes ROS, idênticos ao joint_map do ax12_controller.
+#   matriz_movimento: 1 LINHA por junta, 1 COLUNA por etapa. Em RADIANOS.
+#
+# ATENÇÃO — rolls de tornozelo: ao contrário do otimizada.yaml (onde os
+# rolls ficam de fora e seguram a posição livremente), aqui roll_3 e
+# roll_4 ENTRAM na marcha comandados em 0.0 rad (centro), como vieram da
+# cinemática inversa. Se preferir deixá-los livres, apague as 2 linhas
+# de roll e os 2 nomes correspondentes.
+#
+# Etapas (colunas), nesta ordem:
+#   1) pe_direito_a_frente   2) pe_esquerdo_a_cima
+#   3) pe_esquerdo_a_frente  4) pe_direito_a_cima
+# =====================================================================
+
+passo: 1.0
+pausa: 0.5
+
+nomes_juntas:
+  - PD_tornozelo_pitch_1
+  - PE_tornozelo_pitch_2
+  - PD_tornozelo_roll_3
+  - PE_tornozelo_roll_4
+  - PD_joelho_pitch_5
+  - PE_joelho_pitch_6
+  - PD_quadril_pitch_7
+  - PE_quadril_pitch_8
+
+matriz_movimento:
+  #    pe_dir_frente   pe_esq_cima   pe_esq_frente   pe_dir_cima
+  - [-0.235500,      -0.727600,     -0.947100,      -1.207900]  # PD_tornozelo_pitch_1
+  - [ 0.947100,       1.207900,      0.235500,       0.727600]  # PE_tornozelo_pitch_2
+  - [ 0.000000,       0.000000,      0.000000,       0.000000]  # PD_tornozelo_roll_3
+  - [ 0.000000,       0.000000,      0.000000,       0.000000]  # PE_tornozelo_roll_4
+  - [ 1.200200,       1.456600,      1.171100,       2.410600]  # PD_joelho_pitch_5
+  - [-1.171000,      -2.410600,     -1.200200,      -1.456600]  # PE_joelho_pitch_6
+  - [-0.964700,      -0.729000,     -0.223900,      -1.202700]  # PD_quadril_pitch_7
+  - [ 0.223900,       1.202700,      0.964700,       0.729000]  # PE_quadril_pitch_8

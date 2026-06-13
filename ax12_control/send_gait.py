@@ -1,19 +1,52 @@
 """Cliente de marcha para o robô bípede AX-12.
 
-Roda no PC de comando. Publica a sequência de passos (matriz de
-movimento) em /joint_trajectory e escuta /hardware_errors para saber
-quando o ax12_controller (na Raspberry Pi) está com problemas.
+Roda no PC de comando. Lê a sequência de passos (matriz de movimento)
+de um arquivo YAML, publica passo a passo em /joint_trajectory e escuta
+/hardware_errors para saber quando o ax12_controller (na Raspberry Pi)
+está com problemas.
+
+As matrizes de marcha moram em arquivos .yaml NA MESMA PASTA deste script.
+Para trocar de marcha basta o NOME do arquivo (sem pasta, .yaml opcional):
+    ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
+Sem o parâmetro, usa 'otimizada'. Assim dá para ajustar o movimento SEM
+editar este código.
 
 Antes de começar a marcha, espera o controlador aparecer na rede —
 sem isso, os primeiros comandos se perdem durante a descoberta do DDS.
 """
 
+import os
 import time
 
 import rclpy
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+import yaml
+
+
+# Pasta onde ficam as matrizes (.yaml): a mesma deste script.
+PASTA_MATRIZES = os.path.dirname(os.path.abspath(__file__))
+
+
+def resolver_caminho_matriz(nome):
+    """Transforma o NOME de uma matriz no caminho do arquivo .yaml.
+
+    - 'cin_inve'              -> <pasta deste script>/cin_inve.yaml
+    - 'cin_inve.yaml'         -> <pasta deste script>/cin_inve.yaml
+    - '/outra/pasta/x.yaml'   -> usado como veio (tem pasta no caminho)
+
+    Assim basta jogar os .yaml na mesma pasta do send_gait e pedir só
+    pelo nome. Um caminho completo ainda funciona para arquivos de fora.
+    """
+    nome = str(nome).strip()
+    # Já é um caminho (contém pasta)? Respeita como veio.
+    if os.path.dirname(nome):
+        return nome
+    # Nome simples: garante a extensão e prende na pasta deste script.
+    if not nome.lower().endswith(('.yaml', '.yml')):
+        nome += '.yaml'
+    return os.path.join(PASTA_MATRIZES, nome)
 
 
 # =====================================================================
@@ -25,6 +58,14 @@ class ConexaoRobo:
     def __init__(self):
         rclpy.init()
         self._node = rclpy.create_node('gait_client')
+
+        # --- Qual matriz de marcha usar (parâmetro ROS 'matriz') ---
+        # Basta o NOME do .yaml, que mora na mesma pasta deste script:
+        #   ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
+        # Sem o parâmetro, usa 'otimizada'.
+        self._node.declare_parameter('matriz', 'otimizada')
+        nome_matriz = self._node.get_parameter('matriz').value
+        self.arquivo_marcha = resolver_caminho_matriz(nome_matriz)
 
         # --- QoS dos comandos: PRECISA ser idêntico ao do ax12_controller ---
         # BEST_EFFORT + fila de 1: comando perdido no Wi-Fi é descartado,
@@ -100,6 +141,63 @@ class ConexaoRobo:
 # =====================================================================
 # 2. LÓGICA DA MARCHA (matemática pura, sem ROS)
 # =====================================================================
+def carregar_marcha(caminho):
+    """Lê o YAML da marcha e devolve (nomes_juntas, matriz, passo, pausa).
+
+    Toda a validação acontece AQUI, antes de qualquer comando ir ao robô:
+    arquivo ausente, campo faltando, tipo errado ou matriz inconsistente
+    levantam exceção e o main() aborta sem mexer no hardware.
+
+    Formato esperado (ver otimizada.yaml):
+        passo: 1.0
+        pausa: 0.5
+        nomes_juntas: [<nome>, ...]          # 1 por junta
+        matriz_movimento: [[...], ...]        # 1 linha por junta
+    """
+    with open(caminho, 'r', encoding='utf-8') as f:
+        dados = yaml.safe_load(f)
+
+    if not isinstance(dados, dict):
+        raise ValueError('o arquivo nao contem um mapa YAML (chave: valor).')
+
+    for chave in ('passo', 'pausa', 'nomes_juntas', 'matriz_movimento'):
+        if chave not in dados:
+            raise ValueError(f'falta a chave obrigatoria "{chave}".')
+
+    passo = float(dados['passo'])
+    pausa = float(dados['pausa'])
+    nomes_juntas = dados['nomes_juntas']
+    matriz = dados['matriz_movimento']
+
+    if passo <= 0:
+        raise ValueError(f'"passo" deve ser maior que zero (veio {passo}).')
+    if pausa < 0:
+        raise ValueError(f'"pausa" nao pode ser negativa (veio {pausa}).')
+
+    if not isinstance(nomes_juntas, list) or not nomes_juntas:
+        raise ValueError('"nomes_juntas" deve ser uma lista nao vazia.')
+    if not isinstance(matriz, list) or not matriz:
+        raise ValueError('"matriz_movimento" deve ser uma lista nao vazia.')
+
+    # Uma linha por junta
+    if len(matriz) != len(nomes_juntas):
+        raise ValueError(
+            f'a matriz tem {len(matriz)} linhas, mas ha '
+            f'{len(nomes_juntas)} juntas em nomes_juntas.')
+
+    # Todas as linhas com o mesmo número de colunas (mesmo nº de passos)
+    num_points = len(matriz[0])
+    if num_points == 0:
+        raise ValueError('a matriz nao tem nenhuma coluna (nenhum passo).')
+    for n, linha in enumerate(matriz):
+        if len(linha) != num_points:
+            raise ValueError(
+                f'a linha {n} da matriz tem {len(linha)} colunas; '
+                f'as outras tem {num_points}.')
+
+    return nomes_juntas, matriz, passo, pausa
+
+
 def calcular_velocidade_rad_s(rad_alvo, rad_anterior, passo):
     """Velocidade para cobrir a distância no tempo 'passo' (rad/s).
 
@@ -114,52 +212,26 @@ def main():
     robo = ConexaoRobo()
 
     # =================================================================
-    # A MATRIZ DE MOVIMENTO
-    # Uma LINHA por junta (mesma ordem de nomes_juntas, abaixo).
-    # Uma COLUNA por passo do ciclo de marcha. Valores em radianos.
+    # Carrega a marcha do arquivo YAML (caminho vem do parâmetro 'arquivo').
+    # Qualquer problema no arquivo aborta ANTES de mexer no robô.
     # =================================================================
-    matriz_movimento = [
-        [-0.7418,  0.0873,  0.2182, -0.7418,  0.5236,  0.5236, -0.7418],  # PD_tornozelo
-        [-0.7418,  0.0873,  0.2182, -0.7418,  0.5236,  0.5236, -0.7418],  # PE_tornozelo
-        [ 1.3963,  1.0472,  0.4363,  0.1745,  0.5236,  0.7854,  1.3963],  # PD_joelho
-        [ 1.3963,  1.0472,  0.4363,  0.1745,  0.5236,  0.7854,  1.3963],  # PE_joelho
-        [ 0.0,    -0.7854, -0.6981,  0.4800,  0.4800,  0.3491,  0.0   ],  # PD_quadril
-        [ 0.0,    -0.7854, -0.6981,  0.4800,  0.4800,  0.3491,  0.0   ],  # PE_quadril
-    ]
-
-    # Nomes das juntas: PRECISAM ser idênticos ao joint_map do controlador.
-    # Os rolls de tornozelo (roll_3 e roll_4) estão ativos no controlador,
-    # mas de propósito NÃO entram na marcha: recebem torque e ficam rígidos
-    # na posição em que estiverem. Para movê-los, acrescente o nome aqui e
-    # uma linha correspondente na matriz_movimento, na MESMA ordem.
-    nomes_juntas = [
-        'PD_tornozelo_pitch_1',
-        'PE_tornozelo_pitch_2',
-        'PD_joelho_pitch_5',
-        'PE_joelho_pitch_6',
-        'PD_quadril_pitch_7',
-        'PE_quadril_pitch_8',
-    ]
-
-    # Variáveis de tempo
-    passo = 1.0   # duração da transição entre poses (s)
-    pausa = 0.5   # repouso extra após cada transição (s)
-    tempo_total_espera = passo + pausa
-
-    # --- VALIDAÇÃO: pega erro de digitação ANTES de mexer no robô ---
-    if len(matriz_movimento) != len(nomes_juntas):
-        print(f'ERRO: a matriz tem {len(matriz_movimento)} linhas, '
-              f'mas ha {len(nomes_juntas)} juntas. Corrija antes de rodar.')
+    try:
+        nomes_juntas, matriz_movimento, passo, pausa = carregar_marcha(
+            robo.arquivo_marcha)
+    except FileNotFoundError:
+        print(f'ERRO: arquivo de marcha nao encontrado: {robo.arquivo_marcha}')
+        robo.fechar_conexao()
+        return
+    except (yaml.YAMLError, ValueError, TypeError) as e:
+        print(f'ERRO no arquivo de marcha ({robo.arquivo_marcha}): {e}')
         robo.fechar_conexao()
         return
 
+    print(f'Marcha carregada de: {robo.arquivo_marcha}')
+
+    # Variáveis de tempo (vindas do arquivo)
+    tempo_total_espera = passo + pausa
     num_points = len(matriz_movimento[0])
-    for n, linha in enumerate(matriz_movimento):
-        if len(linha) != num_points:
-            print(f'ERRO: a linha {n} da matriz tem {len(linha)} colunas; '
-                  f'as outras tem {num_points}. Corrija antes de rodar.')
-            robo.fechar_conexao()
-            return
 
     # Histórico: começa na primeira coluna (pose inicial do ciclo)
     posicoes_anteriores = [linha[0] for linha in matriz_movimento]
