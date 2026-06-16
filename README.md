@@ -85,6 +85,16 @@ ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve # outra marcha
 ros2 run ax12_control ax12_monitor
 ```
 
+**4. Visualizar no RViz (sem hardware):**
+
+```bash
+ros2 launch ax12_control visualizar_marcha.launch.py \
+    urdf:=/caminho/para/adam.urdf \
+    matriz:=cin_inve        # ou otimizada
+```
+
+Abre o RViz com o modelo 3D do Adam animando a marcha em loop. Não exige Raspberry Pi nem motores.
+
 `Ctrl+C` em qualquer lado encerra com segurança — o controlador desliga o torque de todos os motores ao sair.
 
 ## Estrutura
@@ -95,8 +105,12 @@ Controle-Ax12---ROS2/
 │   ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
 │   ├── send_gait.py         # gerador de marcha (PC de comando)
 │   ├── ax12_monitor.py      # painel de telemetria no terminal (PC)
+│   ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
+│   ├── adam.rviz            # config RViz pré-configurado para o Adam
 │   ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
 │   └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
+├── launch/
+│   └── visualizar_marcha.launch.py
 ├── docs/
 │   ├── arquitetura.md       # como o sistema funciona por dentro
 │   ├── referencias-ax12.md  # links de SDKs, docs e projetos de referência

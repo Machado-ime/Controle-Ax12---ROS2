@@ -105,18 +105,19 @@ class AX12HardwareInterface(Node):
         }
         self.active_ids = list(self.joint_map.values())
 
-        # Limites de posição por junta (rad) — devem espelhar o URDF (adam.urdf).
-        # O controlador clampeia silenciosamente ao limite e avisa em /hardware_errors.
-        # Padrão = limite físico do AX-12 (±150° = ±2,618 rad).
-        # Ajuste os valores conforme o alcance real de cada segmento do robô.
+        # Limites de posição por junta (rad) medidos no hardware e convertidos via:
+        #   rad = (grau_AX12 - 150) * pi/180
+        # onde grau_AX12 é a posição na escala 0-300° do AX-12.
+        # PD (direito) e PE (esquerdo) são espelhados: os limites de PE são
+        # (lo, hi) direto da medição; PD recebe (-hi, -lo) para refletir a montagem.
         self.joint_limits = {
-            'PD_tornozelo_pitch_1': (-LIMITE_RAD, LIMITE_RAD),
-            'PE_tornozelo_pitch_2': (-LIMITE_RAD, LIMITE_RAD),
-            'PD_tornozelo_roll_3':  (-LIMITE_RAD, LIMITE_RAD),
-            'PE_tornozelo_roll_4':  (-LIMITE_RAD, LIMITE_RAD),
-            'PD_joelho_pitch_5':    (0.0,         LIMITE_RAD),   # joelho só dobra numa direção
-            'PE_joelho_pitch_6':    (-LIMITE_RAD, 0.0),
-            'PD_quadril_pitch_7':   (-LIMITE_RAD, LIMITE_RAD),
+            'PD_tornozelo_pitch_1': (-1.4661,     0.5585),  # espelho de PE
+            'PE_tornozelo_pitch_2': (-0.5585,     1.4661),  # (118°,234°) → (-32°,+84°)
+            'PD_tornozelo_roll_3':  (-0.8727,     0.5934),  # espelho de PE
+            'PE_tornozelo_roll_4':  (-0.5934,     0.8727),  # (116°,200°) → (-34°,+50°)
+            'PD_joelho_pitch_5':    (0.0,         LIMITE_RAD),  # (150°,300°) → (0°,+150°)
+            'PE_joelho_pitch_6':    (-LIMITE_RAD, 0.0),         # espelho de PD
+            'PD_quadril_pitch_7':   (-LIMITE_RAD, LIMITE_RAD),  # sem medição ainda
             'PE_quadril_pitch_8':   (-LIMITE_RAD, LIMITE_RAD),
         }
 
