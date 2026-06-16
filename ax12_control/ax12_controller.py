@@ -107,6 +107,21 @@ class AX12HardwareInterface(Node):
         }
         self.active_ids = list(self.joint_map.values())
 
+        # Limites de posição por junta (rad) — devem espelhar o URDF (adam.urdf).
+        # O controlador clampeia silenciosamente ao limite e avisa em /hardware_errors.
+        # Padrão = limite físico do AX-12 (±150° = ±2,618 rad).
+        # Ajuste os valores conforme o alcance real de cada segmento do robô.
+        self.joint_limits = {
+            'pd_picht_tornozelo_3': (-LIMITE_RAD, LIMITE_RAD),
+            'pe_picht_tornozelo_4': (-LIMITE_RAD, LIMITE_RAD),
+            'pd_roll_tornozelo_1':  (-LIMITE_RAD, LIMITE_RAD),
+            'pe_roll_tornozelo_2':  (-LIMITE_RAD, LIMITE_RAD),
+            'pd_picht_joelho_5':    (0.0,         LIMITE_RAD),   # joelho só dobra numa direção
+            'pe_picht_joelho_6':    (-LIMITE_RAD, 0.0),
+            'pd_picht_quadril_7':   (-LIMITE_RAD, LIMITE_RAD),
+            'pe_pich_quadril_8':    (-LIMITE_RAD, LIMITE_RAD),
+        }
+
         # --- Estado da conexão serial ---
         self.port_ok = False          # a porta está aberta e funcionando?
         self.falhas_reconexao = 0     # reconexões falhas consecutivas
@@ -317,8 +332,16 @@ class AX12HardwareInterface(Node):
                 continue
             dxl_id = self.joint_map[joint_name]
 
+            # --- CLAMP POR JUNTA (limites mecânicos do URDF) ---
+            low, high = self.joint_limits.get(joint_name, (-LIMITE_RAD, LIMITE_RAD))
+            cmd_rad = point.positions[i]
+            rads = max(low, min(high, cmd_rad))
+            if abs(rads - cmd_rad) > 1e-4:
+                self._avisar_erro(
+                    f'{joint_name}: {cmd_rad:.3f} rad fora do limite '
+                    f'[{low:.3f}, {high:.3f}] — clampado para {rads:.3f} rad.')
+
             # --- CONVERSÃO DE POSIÇÃO (rad -> 0 a 1023) ---
-            rads = max(-LIMITE_RAD, min(LIMITE_RAD, point.positions[i]))
             goal_pos = round((rads + LIMITE_RAD) * POS_POR_RAD)
             goal_pos = max(0, min(1023, goal_pos))
 

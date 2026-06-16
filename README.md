@@ -99,6 +99,7 @@ Controle-Ax12---ROS2/
 │   └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
 ├── docs/
 │   ├── arquitetura.md       # como o sistema funciona por dentro
+│   ├── referencias-ax12.md  # links de SDKs, docs e projetos de referência
 │   ├── troubleshooting/
 │   │   └── problemas-comuns.md
 │   └── bizuario_ros.md      # cola de comandos ROS 2 para diagnóstico
@@ -110,7 +111,8 @@ Controle-Ax12---ROS2/
 ```
 
 Documentação técnica aprofundada: [docs/arquitetura.md](docs/arquitetura.md)  
-Problemas e soluções: [docs/troubleshooting/problemas-comuns.md](docs/troubleshooting/problemas-comuns.md)
+Problemas e soluções: [docs/troubleshooting/problemas-comuns.md](docs/troubleshooting/problemas-comuns.md)  
+Referências externas (SDKs, docs, projetos): [docs/referencias-ax12.md](docs/referencias-ax12.md)
 
 ## Problemas conhecidos
 
