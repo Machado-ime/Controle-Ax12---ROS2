@@ -87,18 +87,19 @@ class AX12HardwareInterface(Node):
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
 
         # Mapa das juntas (nome ROS -> ID do motor no barramento)
-        # ATENÇÃO: o sufixo numérico do NOME é histórico e NÃO é o ID real
-        # do motor (ex.: PD_tornozelo_pitch_1 é o motor de ID 18).
+        # Nomes seguem a convenção do URDF (adam.urdf): {lado}_{movimento}_{segmento}_{N}.
+        # O sufixo N é o ID de projeto no URDF e NÃO o ID físico do motor no barramento
+        # (ex.: pd_picht_tornozelo_3 é o motor de ID 18).
         # O ID que vale é sempre o número à direita.
         self.joint_map = {
-            'PD_tornozelo_pitch_1': 18,
-            'PE_tornozelo_pitch_2': 13,
-            'PD_tornozelo_roll_3': 17,   # ativos, mas fora da marcha atual:
-            'PE_tornozelo_roll_4': 12,   # recebem torque e seguram a posição
-            'PD_joelho_pitch_5': 16,
-            'PE_joelho_pitch_6': 11,
-            'PD_quadril_pitch_7': 15,
-            'PE_quadril_pitch_8': 10,
+            'pd_picht_tornozelo_3': 18,
+            'pe_picht_tornozelo_4': 13,
+            'pd_roll_tornozelo_1': 17,   # ativos, mas fora da marcha padrão:
+            'pe_roll_tornozelo_2': 12,   # recebem torque e seguram a posição
+            'pd_picht_joelho_5': 16,
+            'pe_picht_joelho_6': 11,
+            'pd_picht_quadril_7': 15,
+            'pe_pich_quadril_8': 10,
             # Juntas ainda sem ID no barramento atual (quadril roll, braços,
             # pescoço): adicione aqui quando forem ligadas — cuidado para
             # NÃO repetir um ID já usado acima (ID duplicado = dois nomes

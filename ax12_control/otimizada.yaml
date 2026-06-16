@@ -14,9 +14,9 @@
 #   matriz_movimento: uma LINHA por junta (mesma ordem de nomes_juntas),
 #                     uma COLUNA por passo do ciclo. Valores em RADIANOS.
 #
-# Os rolls de tornozelo (roll_3 e roll_4) estão ativos no controlador,
-# mas de propósito NÃO entram na marcha: recebem torque e ficam rígidos.
-# Para movê-los, acrescente o nome em nomes_juntas e uma linha
+# Os rolls de tornozelo (pd_roll_tornozelo_1 e pe_roll_tornozelo_2) estão ativos
+# no controlador, mas de propósito NÃO entram na marcha: recebem torque e ficam
+# rígidos. Para movê-los, acrescente o nome em nomes_juntas e uma linha
 # correspondente na matriz_movimento, na MESMA ordem.
 # =====================================================================
 
@@ -24,17 +24,17 @@ passo: 1.0
 pausa: 0.5
 
 nomes_juntas:
-  - PD_tornozelo_pitch_1
-  - PE_tornozelo_pitch_2
-  - PD_joelho_pitch_5
-  - PE_joelho_pitch_6
-  - PD_quadril_pitch_7
-  - PE_quadril_pitch_8
+  - pd_picht_tornozelo_3
+  - pe_picht_tornozelo_4
+  - pd_picht_joelho_5
+  - pe_picht_joelho_6
+  - pd_picht_quadril_7
+  - pe_pich_quadril_8
 
 matriz_movimento:
-  - [-0.7418,  0.0873,  0.2182, -0.7418,  0.5236,  0.5236, -0.7418]  # PD_tornozelo
-  - [-0.7418,  0.0873,  0.2182, -0.7418,  0.5236,  0.5236, -0.7418]  # PE_tornozelo
-  - [ 1.3963,  1.0472,  0.4363,  0.1745,  0.5236,  0.7854,  1.3963]  # PD_joelho
-  - [ 1.3963,  1.0472,  0.4363,  0.1745,  0.5236,  0.7854,  1.3963]  # PE_joelho
-  - [ 0.0,    -0.7854, -0.6981,  0.4800,  0.4800,  0.3491,  0.0   ]  # PD_quadril
-  - [ 0.0,    -0.7854, -0.6981,  0.4800,  0.4800,  0.3491,  0.0   ]  # PE_quadril
+  - [-0.7418,  0.0873,  0.2182, -0.7418,  0.5236,  0.5236, -0.7418]  # pd_picht_tornozelo_3
+  - [-0.7418,  0.0873,  0.2182, -0.7418,  0.5236,  0.5236, -0.7418]  # pe_picht_tornozelo_4
+  - [ 1.3963,  1.0472,  0.4363,  0.1745,  0.5236,  0.7854,  1.3963]  # pd_picht_joelho_5
+  - [ 1.3963,  1.0472,  0.4363,  0.1745,  0.5236,  0.7854,  1.3963]  # pe_picht_joelho_6
+  - [ 0.0,    -0.7854, -0.6981,  0.4800,  0.4800,  0.3491,  0.0   ]  # pd_picht_quadril_7
+  - [ 0.0,    -0.7854, -0.6981,  0.4800,  0.4800,  0.3491,  0.0   ]  # pe_pich_quadril_8

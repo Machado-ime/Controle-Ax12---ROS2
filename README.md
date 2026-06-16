@@ -195,20 +195,20 @@ ros2 run ax12_control ax12_controller --ros-args -p device:=/dev/ttyUSB0
 
 | Junta                  | ID do motor |
 |------------------------|-------------|
-| `PD_tornozelo_pitch_1` | 18          |
-| `PE_tornozelo_pitch_2` | 13          |
-| `PD_tornozelo_roll_3`  | 17          |
-| `PE_tornozelo_roll_4`  | 12          |
-| `PD_joelho_pitch_5`    | 16          |
-| `PE_joelho_pitch_6`    | 11          |
-| `PD_quadril_pitch_7`   | 15          |
-| `PE_quadril_pitch_8`   | 10          |
+| `pd_picht_tornozelo_3` | 18          |
+| `pe_picht_tornozelo_4` | 13          |
+| `pd_roll_tornozelo_1`  | 17          |
+| `pe_roll_tornozelo_2`  | 12          |
+| `pd_picht_joelho_5`    | 16          |
+| `pe_picht_joelho_6`    | 11          |
+| `pd_picht_quadril_7`   | 15          |
+| `pe_pich_quadril_8`    | 10          |
 
 > [!WARNING]
-> O sufixo numérico do **nome** da junta é histórico e **não corresponde ao ID real** do motor (ex.: `PD_tornozelo_pitch_1` é o motor de ID **18**). O ID que vale é o da tabela acima / do `joint_map`.
+> Os nomes seguem a convenção do URDF (`adam.urdf`): `{lado}_{movimento}_{segmento}_{N}`. O sufixo N é o ID de projeto no URDF e **não corresponde ao ID físico** do motor no barramento (ex.: `pd_picht_tornozelo_3` é o motor de ID **18**). O ID que vale é o da tabela acima / do `joint_map`.
 
 > [!NOTE]
-> Todas as 8 juntas recebem torque do controlador, mas **quais são comandadas pela marcha depende do arquivo `.yaml` carregado pelo `send_gait`** — ver [Marchas (arquivos .yaml)](#marchas-arquivos-yaml). Na marcha padrão (`otimizada.yaml`), os rolls de tornozelo (`PD_tornozelo_roll_3`/`PE_tornozelo_roll_4`, IDs 17/12) ficam de fora e apenas seguram a posição.
+> Todas as 8 juntas recebem torque do controlador, mas **quais são comandadas pela marcha depende do arquivo `.yaml` carregado pelo `send_gait`** — ver [Marchas (arquivos .yaml)](#marchas-arquivos-yaml). Na marcha padrão (`otimizada.yaml`), os rolls de tornozelo (`pd_roll_tornozelo_1`/`pe_roll_tornozelo_2`, IDs 17/12) ficam de fora e apenas seguram a posição.
 
 As demais juntas (quadril roll, braços e pescoço) ainda não têm ID no barramento atual. Para ativar uma junta nova: adicione-a ao `joint_map` do `ax12_controller.py` (sem repetir ID!) e, se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do arquivo `.yaml` da marcha, na mesma ordem.
 
@@ -261,8 +261,8 @@ passo: 1.0      # duração da transição entre duas poses (segundos)
 pausa: 0.5      # repouso extra após cada transição (segundos)
 
 nomes_juntas:             # nomes ROS, idênticos ao joint_map do ax12_controller
-  - PD_tornozelo_pitch_1
-  - PE_tornozelo_pitch_2
+  - pd_picht_tornozelo_3
+  - pe_picht_tornozelo_4
   - ...
 
 matriz_movimento:         # 1 linha por junta (mesma ordem de nomes_juntas)
@@ -274,7 +274,7 @@ matriz_movimento:         # 1 linha por junta (mesma ordem de nomes_juntas)
 
 | Arquivo | Juntas | Descrição |
 |---|---|---|
-| `otimizada.yaml` (padrão) | 6 — pitches de tornozelo, joelho e quadril | Marcha ajustada manualmente. Os rolls de tornozelo (`*_roll_3`/`*_roll_4`) ficam de fora: recebem torque do controlador, mas não são comandados, ficando rígidos. |
+| `otimizada.yaml` (padrão) | 6 — pitches de tornozelo, joelho e quadril | Marcha ajustada manualmente. Os rolls de tornozelo (`pd_roll_tornozelo_1`/`pe_roll_tornozelo_2`) ficam de fora: recebem torque do controlador, mas não são comandados, ficando rígidos. |
 | `cin_inve.yaml` | 8 — inclui os rolls | Gerada a partir da cinemática inversa dos pés (`angulos.mat`/`angulos_rad`, 8 juntas × 4 etapas). Os rolls **entram** na marcha, comandados em 0 rad (centro). |
 
 Selecione com o parâmetro `matriz` (nome do arquivo, sem pasta nem extensão):
