@@ -1,0 +1,975 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="adam">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="0.00195020607297603 0.0015365948940603 0.0967410638415927"
+        rpy="0 0 0" />
+      <mass
+        value="0.995206024305125" />
+      <inertia
+        ixx="0.00209366413502623"
+        ixy="-3.44165157573017E-06"
+        ixz="-3.76147491081991E-05"
+        iyy="0.00104892347800008"
+        iyz="4.39264233962694E-07"
+        izz="0.00143772727774919" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="pe_quadril">
+    <inertial>
+      <origin
+        xyz="-0.0141537789189758 0.0079442590908788 -0.0203546969084569"
+        rpy="0 0 0" />
+      <mass
+        value="0.0601196297918617" />
+      <inertia
+        ixx="1.05752664612248E-05"
+        ixy="2.77277222042103E-08"
+        ixz="1.90980207221988E-07"
+        iyy="1.85434270590147E-05"
+        iyz="-1.50339397227627E-09"
+        izz="1.6833524946486E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.03625008 -0.01049992 -0.02299991"
+        rpy="-2.356194 -1.570791 -2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_quadril.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.03625008 -0.01049992 -0.02299991"
+        rpy="-2.356194 -1.570791 -2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_quadril.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pe_roll_quadril_10"
+    type="revolute">
+    <origin
+      xyz="0.023 0.03625 -0.0105"
+      rpy="-1.5708 0 -1.5708" />
+    <parent
+      link="base_link" />
+    <child
+      link="pe_quadril" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pe_coxa">
+    <inertial>
+      <origin
+        xyz="-0.0437544713256375 0.000185181434899077 -0.0201107522449157"
+        rpy="0 0 0" />
+      <mass
+        value="0.0968121752379244" />
+      <inertia
+        ixx="2.17184161505064E-05"
+        ixy="2.43915536500787E-07"
+        ixz="1.92483601194419E-07"
+        iyy="2.15714683155095E-05"
+        iyz="1.8947681324991E-07"
+        izz="2.23096889825298E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.04740802 -0.02124498 -0.005799904"
+        rpy="-2.356194 -1.570791 -2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_coxa.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.04740802 -0.02124498 -0.005799904"
+        rpy="-2.356194 -1.570791 -2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_coxa.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pe_pich_quadril_8"
+    type="revolute">
+    <origin
+      xyz="0.0058 0.047408 -0.021245"
+      rpy="-1.5708 0 -1.5708" />
+    <parent
+      link="pe_quadril" />
+    <child
+      link="pe_coxa" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pe_canela">
+    <inertial>
+      <origin
+        xyz="-0.0155527691479751 0.0340638025249013 -0.0245106103270809"
+        rpy="0 0 0" />
+      <mass
+        value="0.0215777608725722" />
+      <inertia
+        ixx="1.4598978170005E-05"
+        ixy="1.0381647060631E-06"
+        ixz="1.02719681520551E-07"
+        iyy="3.71078393277981E-06"
+        iyz="8.18226195330727E-08"
+        izz="1.66754319910828E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.01570027 -0.07439994 0"
+        rpy="0 -0 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_canela.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.01570027 -0.07439994 0"
+        rpy="0 -0 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_canela.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pe_picht_joelho_6"
+    type="revolute">
+    <origin
+      xyz="-0.0744 0.0157 0"
+      rpy="0 0 1.5708" />
+    <parent
+      link="pe_coxa" />
+    <child
+      link="pe_canela" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pe_tornozelo">
+    <inertial>
+      <origin
+        xyz="-0.0134693253818237 -0.0201773771395345 -0.0206205443123456"
+        rpy="0 0 0" />
+      <mass
+        value="0.0955442292607815" />
+      <inertia
+        ixx="1.49612051029207E-05"
+        ixy="2.17234097066861E-07"
+        ixz="1.80636636869058E-07"
+        iyy="2.43984477219524E-05"
+        iyz="2.18629887976326E-10"
+        izz="2.25501418470081E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.07524105 -0.01319272 0"
+        rpy="0 -0 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_tornozelo.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.07524105 -0.01319272 0"
+        rpy="0 -0 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_tornozelo.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pe_picht_tornozelo_4"
+    type="revolute">
+    <origin
+      xyz="-0.013193 0.075241 0"
+      rpy="0 0 1.5708" />
+    <parent
+      link="pe_canela" />
+    <child
+      link="pe_tornozelo" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pe_pe">
+    <inertial>
+      <origin
+        xyz="0.026171545088176 0.00582483538972349 0.0336984569140744"
+        rpy="0 0 0" />
+      <mass
+        value="0.039523089021379" />
+      <inertia
+        ixx="3.80242718390701E-05"
+        ixy="-1.02266302474654E-20"
+        ixz="1.64143868327474E-06"
+        iyy="2.98020253932323E-05"
+        iyz="2.4233636345842E-21"
+        izz="1.25379381336875E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.0001 -0.02120009 0.02379992"
+        rpy="1.5708 -0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_pe.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.0001 -0.02120009 0.02379992"
+        rpy="1.5708 -0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pe_pe.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pe_roll_tornozelo_2"
+    type="revolute">
+    <origin
+      xyz="0.0001 -0.0238 -0.0212"
+      rpy="-1.5708 0 0" />
+    <parent
+      link="pe_tornozelo" />
+    <child
+      link="pe_pe" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pd_quadril">
+    <inertial>
+      <origin
+        xyz="-0.0141537789189726 -0.00790087330665539 -0.0203546969084566"
+        rpy="0 0 0" />
+      <mass
+        value="0.0601196297918616" />
+      <inertia
+        ixx="1.05752664612248E-05"
+        ixy="-7.10250058785484E-09"
+        ixz="1.90980207222048E-07"
+        iyy="1.85434270590146E-05"
+        iyz="-1.50339397227757E-09"
+        izz="1.6833524946486E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.03625008 0.01049992 -0.02299991"
+        rpy="2.356194 -1.570791 2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_quadril.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.03625008 0.01049992 -0.02299991"
+        rpy="2.356194 -1.570791 2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_quadril.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pd_roll_quadril_9"
+    type="revolute">
+    <origin
+      xyz="0.023 -0.03625 -0.0105"
+      rpy="1.5708 0 1.5708" />
+    <parent
+      link="base_link" />
+    <child
+      link="pd_quadril" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pd_coxa">
+    <inertial>
+      <origin
+        xyz="-0.0437275290812852 -0.000158239190416812 -0.0201107522449149"
+        rpy="0 0 0" />
+      <mass
+        value="0.0968121752379245" />
+      <inertia
+        ixx="2.17184161505041E-05"
+        ixy="-2.43915536525012E-07"
+        ixz="1.89476813248759E-07"
+        iyy="2.15714683155118E-05"
+        iyz="-1.92483601194113E-07"
+        izz="2.23096889825298E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.04740802 0.02124498 -0.005799904"
+        rpy="2.356194 -1.570791 2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_coxa.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.04740802 0.02124498 -0.005799904"
+        rpy="2.356194 -1.570791 2.356194" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_coxa.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pd_picht_quadril_7"
+    type="revolute">
+    <origin
+      xyz="0.0058 -0.047408 -0.021245"
+      rpy="1.5708 0 1.5708" />
+    <parent
+      link="pd_quadril" />
+    <child
+      link="pd_coxa" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pd_canela">
+    <inertial>
+      <origin
+        xyz="-0.0155527691480307 -0.0340638025249009 -0.0245106103270773"
+        rpy="0 0 0" />
+      <mass
+        value="0.0215777608725698" />
+      <inertia
+        ixx="1.45989781700028E-05"
+        ixy="-1.03816470606297E-06"
+        ixz="1.02719681520544E-07"
+        iyy="3.7107839327796E-06"
+        iyz="-8.18226195330988E-08"
+        izz="1.66754319910805E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.01570027 0.07439994 0"
+        rpy="0 -0 1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_canela.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.01570027 0.07439994 0"
+        rpy="0 -0 1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_canela.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pd_picht_joelho_5"
+    type="revolute">
+    <origin
+      xyz="-0.0744 -0.0157 0"
+      rpy="0 0 -1.5708" />
+    <parent
+      link="pd_coxa" />
+    <child
+      link="pd_canela" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pd_tornozelo">
+    <inertial>
+      <origin
+        xyz="-0.0134718393089086 0.0206532046271628 -0.0205484764347007"
+        rpy="0 0 0" />
+      <mass
+        value="0.0955442292607816" />
+      <inertia
+        ixx="1.49611784981457E-05"
+        ixy="-1.89283747297888E-07"
+        ixz="2.01323777574969E-07"
+        iyy="2.43984743267275E-05"
+        iyz="2.18629887978214E-10"
+        izz="2.25501418470081E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.07524105 0.01319272 0"
+        rpy="0 -0 1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_tornozelo.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.07524105 0.01319272 0"
+        rpy="0 -0 1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_tornozelo.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pd_picht_tornozelo_3"
+    type="revolute">
+    <origin
+      xyz="-0.013193 -0.075241 0"
+      rpy="0 0 -1.5708" />
+    <parent
+      link="pd_canela" />
+    <child
+      link="pd_tornozelo" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="pd_pe">
+    <inertial>
+      <origin
+        xyz="0.026171545088176 -0.00582483538972349 0.0336984569140743"
+        rpy="0 0 0" />
+      <mass
+        value="0.039523089021379" />
+      <inertia
+        ixx="3.80242718390703E-05"
+        ixy="-1.83320846796506E-20"
+        ixz="1.64143868327473E-06"
+        iyy="2.98020253932324E-05"
+        iyz="1.6708963812625E-20"
+        izz="1.25379381336875E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.0001 0.02100009 0.02469992"
+        rpy="-1.5708 -0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_pe.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.0001 0.02100009 0.02469992"
+        rpy="-1.5708 -0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/pd_pe.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="pd_roll_tornozelo_1"
+    type="revolute">
+    <origin
+      xyz="0.0001 0.0247 -0.021"
+      rpy="1.5708 0 0" />
+    <parent
+      link="pd_tornozelo" />
+    <child
+      link="pd_pe" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="be_ombro">
+    <inertial>
+      <origin
+        xyz="-0.00591470228756696 -0.000974403883866788 0.0105863111205495"
+        rpy="0 0 0" />
+      <mass
+        value="0.0114060167943632" />
+      <inertia
+        ixx="5.40994393258749E-06"
+        ixy="-1.34316677964226E-07"
+        ixz="7.12790037989189E-07"
+        iyy="2.25934107800527E-06"
+        iyz="1.37966276921573E-07"
+        izz="5.57806617636153E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.1758 9.689915e-07 0.088"
+        rpy="-1.570796 -3.673205e-06 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/be_ombro.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.1758 9.689915e-07 0.088"
+        rpy="-1.570796 -3.673205e-06 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/be_ombro.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="be_picht_ombro_12"
+    type="revolute">
+    <origin
+      xyz="0.0011633 0.088 0.17629"
+      rpy="-1.5708 -1.533 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="be_ombro" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="be_biceps">
+    <inertial>
+      <origin
+        xyz="-0.036793823856908 -0.000442882193545352 -0.0177975126743866"
+        rpy="0 0 0" />
+      <mass
+        value="0.0942481696340367" />
+      <inertia
+        ixx="2.02881993989639E-05"
+        ixy="8.80921683799235E-09"
+        ixz="1.8047650681103E-07"
+        iyy="2.28390718448768E-05"
+        iyz="-1.9248360119428E-07"
+        izz="1.76657308449474E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.018 0.02300008 -0.02099992"
+        rpy="1.5708 -0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/be_biceps.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.018 0.02300008 -0.02099992"
+        rpy="1.5708 -0 0" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/be_biceps.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="be_roll_ombro_14"
+    type="revolute">
+    <origin
+      xyz="-0.017193 0.021666 0.023"
+      rpy="-1.5708 0 -0.037834" />
+    <parent
+      link="be_ombro" />
+    <child
+      link="be_biceps" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="be_antibraco">
+    <inertial>
+      <origin
+        xyz="-0.0171454293155524 0.0590518683884194 -0.0211407829806558"
+        rpy="0 0 0" />
+      <mass
+        value="0.0789439743494325" />
+      <inertia
+        ixx="0.000102732451603257"
+        ixy="3.85915021672152E-06"
+        ixz="1.9055441753992E-07"
+        iyy="1.52990594639976E-05"
+        iyz="-6.56302912725517E-07"
+        izz="9.95934733941508E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.00219978 -0.05990009 -0.02099978"
+        rpy="-1.570796 -3.673205e-06 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/be_antibraco.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.00219978 -0.05990009 -0.02099978"
+        rpy="-1.570796 -3.673205e-06 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/be_antibraco.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="be_picht_cotovelo_16"
+    type="revolute">
+    <origin
+      xyz="-0.0599 -0.021 -0.0028"
+      rpy="1.5708 -1.5708 0" />
+    <parent
+      link="be_biceps" />
+    <child
+      link="be_antibraco" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="bd_ombro">
+    <inertial>
+      <origin
+        xyz="-0.00594732563508293 0.000749974802561257 0.0105863121858034"
+        rpy="0 0 0" />
+      <mass
+        value="0.011406014540264" />
+      <inertia
+        ixx="5.39528149045346E-06"
+        ixy="2.53019657155532E-07"
+        ixz="7.174986475701E-07"
+        iyy="2.27400259138332E-06"
+        iyz="-1.10906311459216E-07"
+        izz="5.57806541951859E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="-0.1762081 -0.005499382 -0.08799998"
+        rpy="-1.570796 -3.670582e-06 -1.533" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/bd_ombro.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="-0.1762081 -0.005499382 -0.08799998"
+        rpy="-1.570796 -3.670582e-06 -1.533" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/bd_ombro.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="bd_picht_ombro_11"
+    type="revolute">
+    <origin
+      xyz="0.0011633 -0.088 0.17629"
+      rpy="1.5708 -1.533 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="bd_ombro" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="bd_biceps">
+    <inertial>
+      <origin
+        xyz="-0.0367661486532937 0.000470557397159774 -0.0180691464227351"
+        rpy="0 0 0" />
+      <mass
+        value="0.0942481696340366" />
+      <inertia
+        ixx="2.02881993989639E-05"
+        ixy="8.80921683807009E-09"
+        ixz="2.01483907633003E-07"
+        iyy="2.28390718448768E-05"
+        iyz="1.89476813249758E-07"
+        izz="1.76657308449474E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.01800021 -0.02300008 -0.02100009"
+        rpy="-1.5708 -0.037834 1.390384e-07" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/bd_biceps.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.01800021 -0.02300008 -0.02100009"
+        rpy="-1.5708 -0.037834 1.390384e-07" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/bd_biceps.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="bd_roll_ombro_13"
+    type="revolute">
+    <origin
+      xyz="-0.017193 -0.021666 0.023"
+      rpy="1.5708 0 0.037834" />
+    <parent
+      link="bd_ombro" />
+    <child
+      link="bd_biceps" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+  <link
+    name="bd_antibraco">
+    <inertial>
+      <origin
+        xyz="-0.0171277804535932 -0.0590518901995056 -0.0211407837221133"
+        rpy="0 0 0" />
+      <mass
+        value="0.0789440281616455" />
+      <inertia
+        ixx="0.000102732517538214"
+        ixy="-3.84562112918514E-06"
+        ixz="1.90358865799656E-07"
+        iyy="1.5296720979341E-05"
+        iyz="6.56305147998297E-07"
+        izz="9.95911961155254E-05" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.00279978 -0.05989993 0.02100022"
+        rpy="-1.570796 -3.673205e-06 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/bd_antibraco.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0.00279978 -0.05989993 0.02100022"
+        rpy="-1.570796 -3.673205e-06 -1.5708" />
+      <geometry>
+        <mesh
+          filename="package://adam/meshes/bd_antibraco.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="bd_picht_cotovelo_15"
+    type="revolute">
+    <origin
+      xyz="-0.0599 0.021 -0.0028"
+      rpy="1.5708 -1.5708 3.141593" />
+    <parent
+      link="bd_biceps" />
+    <child
+      link="bd_antibraco" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.618"
+      upper="2.618"
+      effort="1.5"
+      velocity="11.9" />
+  </joint>
+</robot>

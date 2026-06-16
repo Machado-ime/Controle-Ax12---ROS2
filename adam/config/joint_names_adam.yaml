@@ -1,0 +1,1 @@
+controller_joint_names: ['', 'pe_roll_quadril_10', 'pe_pich_quadril_8', 'pe_picht_joelho_6', 'pe_picht_tornozelo_4', 'pe_roll_tornozelo_2', 'pd_roll_quadril_9', 'pd_picht_quadril_7', 'pd_picht_joelho_5', 'pd_picht_tornozelo_3', 'pd_roll_tornozelo_1', 'be_picht_ombro_12', 'be_roll_ombro_14', 'be_picht_cotovelo_16', 'bd_picht_ombro_11', 'bd_roll_ombro_13', 'bd_picht_cotovelo_15', ]
