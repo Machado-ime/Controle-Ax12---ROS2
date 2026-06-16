@@ -7,15 +7,16 @@
 Pacote ROS 2 (`ax12_control`) para controle dos servomotores **Dynamixel AX-12** de um robô bípede. O sistema é distribuído em duas máquinas que se comunicam pela rede (DDS/Wi-Fi):
 
 - **Raspberry Pi** (conectada aos motores via USB): roda o nó `ax12_controller`, que recebe trajetórias e escreve nos motores.
-- **PC de comando**: roda o `send_gait`, que publica a sequência de marcha.
+- **PC de comando**: roda o `send_gait`, que publica a sequência de marcha (lida de um arquivo `.yaml`).
 
 ```
    PC de comando                              Raspberry Pi
 ┌─────────────────┐    /joint_trajectory   ┌──────────────────┐    USB/serial     ┌──────────────┐
 │    send_gait    │ ─────────────────────▶ │  ax12_controller │ ────────────────▶ │ Motores AX-12│
 └─────────────────┘   (JointTrajectory,    └──────────────────┘  1 Mbps, Proto 1.0└──────────────┘
-                       QoS BEST_EFFORT,
-                          depth = 1)
+        ▲              QoS BEST_EFFORT,
+        │                 depth = 1)
+   *.yaml (marcha)
 ```
 
 ## Sumário
@@ -25,6 +26,8 @@ Pacote ROS 2 (`ax12_control`) para controle dos servomotores **Dynamixel AX-12**
 - [Instalação](#instalação)
 - [Como rodar](#como-rodar)
 - [Os códigos explicados](#os-códigos-explicados)
+- [Marchas (arquivos .yaml)](#marchas-arquivos-yaml)
+- [Telemetria e visualização](#telemetria-e-visualização)
 - [Detalhes técnicos](#detalhes-técnicos)
 - [Solução de problemas](#solução-de-problemas)
 - [Licença](#licença)
@@ -34,14 +37,21 @@ Pacote ROS 2 (`ax12_control`) para controle dos servomotores **Dynamixel AX-12**
 ```
 Controle-Ax12---ROS2/
 ├── package.xml              # Manifesto ROS 2 (nome do pacote e dependências)
-├── setup.py                 # Instalador: define os executáveis do ros2 run
+├── setup.py                 # Instalador: define os executáveis do ros2 run e os .yaml empacotados
 ├── setup.cfg                # Destino dos executáveis no install/
 ├── resource/
 │   └── ax12_control         # Marcador do ament index (não editar)
 ├── ax12_control/            # Código-fonte (módulo Python)
 │   ├── __init__.py
 │   ├── ax12_controller.py   # Nó de interface de hardware (roda na Raspberry Pi)
-│   └── send_gait.py         # Cliente de marcha (roda no PC de comando)
+│   ├── send_gait.py          # Cliente de marcha (roda no PC de comando)
+│   ├── ax12_monitor.py       # Painel de telemetria no terminal (roda no PC de comando)
+│   ├── otimizada.yaml        # Marcha padrão (6 juntas) — lida pelo send_gait
+│   └── cin_inve.yaml         # Marcha por cinemática inversa (8 juntas) — lida pelo send_gait
+├── matrizes de movimento/    # Origem/referência das marchas (fora do pacote instalado)
+│   ├── otimizada.yaml
+│   ├── cin_inve.yaml
+│   └── otimização.h          # Header C de um protótipo antigo (18 motores) — não usado por este pacote
 ├── docs/
 │   └── bizuario_ros.md      # Cola de comandos úteis do ROS 2 para diagnóstico
 ├── legacy/                  # Versões antigas (referência histórica, fora do build)
@@ -59,6 +69,7 @@ Controle-Ax12---ROS2/
 | ROS 2 | Jazzy | [Guia oficial de instalação](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) |
 | colcon | — | `sudo apt install python3-colcon-common-extensions` |
 | Dynamixel SDK | 3.x | [Manual da ROBOTIS](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/overview/) — comando abaixo |
+| PyYAML | — | `sudo apt install -y python3-yaml` — o `send_gait` lê as marchas de arquivos `.yaml` |
 | git | — | `sudo apt install git` |
 
 **Instalação resumida dos pré-requisitos** (após instalar o Ubuntu 24.04):
@@ -82,10 +93,13 @@ sudo apt install -y python3-colcon-common-extensions
 sudo apt install -y ros-jazzy-dynamixel-sdk
 # alternativa, caso o pacote apt não exista para sua plataforma:
 # pip3 install dynamixel-sdk
+
+# 4. PyYAML (necessário apenas no PC de comando, que roda o send_gait)
+sudo apt install -y python3-yaml
 ```
 
 > [!NOTE]
-> Os passos acima devem ser feitos **nas duas máquinas** (Raspberry Pi e PC de comando), exceto o Dynamixel SDK, que só é obrigatório na Raspberry Pi.
+> Os passos 1 e 2 devem ser feitos **nas duas máquinas** (Raspberry Pi e PC de comando). O Dynamixel SDK (passo 3) só é obrigatório na Raspberry Pi; o PyYAML (passo 4) só no PC de comando.
 
 ## Instalação
 
@@ -118,8 +132,12 @@ Para verificar a instalação:
 ros2 pkg executables ax12_control
 # saída esperada:
 # ax12_control ax12_controller
+# ax12_control ax12_monitor
 # ax12_control send_gait
 ```
+
+> [!NOTE]
+> Os arquivos `.yaml` de marcha (`otimizada.yaml`, `cin_inve.yaml`) são copiados para `install/` junto com o módulo (`package_data` em `setup.py`). Se você adicionar um `.yaml` novo em `ax12_control/`, rode `colcon build --packages-select ax12_control` de novo para que o `send_gait` o encontre.
 
 ## Como rodar
 
@@ -137,7 +155,19 @@ Saída esperada: `Porta aberta com sucesso!` seguido de `Torque LIGADO`. O nó f
 ros2 run ax12_control send_gait
 ```
 
-O robô começa a executar o ciclo de marcha em loop. `Ctrl+C` em qualquer um dos lados encerra com segurança (o controlador desliga o torque dos motores ao sair).
+O robô começa a executar a marcha **padrão** (`otimizada.yaml`) em loop. Para usar outra marcha (ver [Marchas](#marchas-arquivos-yaml)):
+
+```bash
+ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
+```
+
+`Ctrl+C` em qualquer um dos lados encerra com segurança (o controlador desliga o torque dos motores ao sair).
+
+**3. (Opcional) No PC de comando, em outro terminal** — painel de telemetria ao vivo:
+
+```bash
+ros2 run ax12_control ax12_monitor
+```
 
 ## Os códigos explicados
 
@@ -145,7 +175,7 @@ O robô começa a executar o ciclo de marcha em loop. `Ctrl+C` em qualquer um do
 
 É o nó ROS 2 `ax12_hardware_interface`, o único processo que toca o barramento serial dos motores. O fluxo dele:
 
-1. **Mapa de juntas** (`joint_map`): associa o nome de cada junta ao ID do motor no barramento. Atualmente 8 juntas ativas — 6 comandadas pela marcha e 2 rolls de tornozelo travados (ver tabela abaixo).
+1. **Mapa de juntas** (`joint_map`): associa o nome de cada junta ao ID do motor no barramento. Atualmente 8 juntas ativas (ver tabela abaixo).
 2. **Abertura da serial com tentativas**: porta e baudrate são **parâmetros ROS** (padrão `/dev/ttyACM0`, 1 Mbps); o nó tenta abrir 5 vezes antes de desistir (útil quando a USB demora a enumerar no boot da Pi).
 3. **Liga o torque** de cada motor com pausa de 50 ms entre eles, conferindo se cada um respondeu (`COMM_SUCCESS`).
 4. **Assina `/joint_trajectory`** (`trajectory_msgs/JointTrajectory`) e, a cada mensagem:
@@ -163,34 +193,43 @@ Parâmetros disponíveis (`--ros-args -p nome:=valor`): `device`, `baudrate`, `t
 ros2 run ax12_control ax12_controller --ros-args -p device:=/dev/ttyUSB0
 ```
 
-| Junta                  | ID do motor | Comandada pela marcha? |
-|------------------------|-------------|------------------------|
-| `PD_tornozelo_pitch_1` | 18          | Sim |
-| `PE_tornozelo_pitch_2` | 13          | Sim |
-| `PD_tornozelo_roll_3`  | 17          | Não — torque ligado, posição travada |
-| `PE_tornozelo_roll_4`  | 12          | Não — torque ligado, posição travada |
-| `PD_joelho_pitch_5`    | 16          | Sim |
-| `PE_joelho_pitch_6`    | 11          | Sim |
-| `PD_quadril_pitch_7`   | 15          | Sim |
-| `PE_quadril_pitch_8`   | 10          | Sim |
+| Junta                  | ID do motor |
+|------------------------|-------------|
+| `PD_tornozelo_pitch_1` | 18          |
+| `PE_tornozelo_pitch_2` | 13          |
+| `PD_tornozelo_roll_3`  | 17          |
+| `PE_tornozelo_roll_4`  | 12          |
+| `PD_joelho_pitch_5`    | 16          |
+| `PE_joelho_pitch_6`    | 11          |
+| `PD_quadril_pitch_7`   | 15          |
+| `PE_quadril_pitch_8`   | 10          |
 
 > [!WARNING]
 > O sufixo numérico do **nome** da junta é histórico e **não corresponde ao ID real** do motor (ex.: `PD_tornozelo_pitch_1` é o motor de ID **18**). O ID que vale é o da tabela acima / do `joint_map`.
 
-As demais juntas (quadril roll, braços e pescoço) ainda não têm ID no barramento atual. Para ativar uma junta nova: adicione-a ao `joint_map` do `ax12_controller.py` (sem repetir ID!) e, se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do `send_gait.py`, na mesma ordem.
+> [!NOTE]
+> Todas as 8 juntas recebem torque do controlador, mas **quais são comandadas pela marcha depende do arquivo `.yaml` carregado pelo `send_gait`** — ver [Marchas (arquivos .yaml)](#marchas-arquivos-yaml). Na marcha padrão (`otimizada.yaml`), os rolls de tornozelo (`PD_tornozelo_roll_3`/`PE_tornozelo_roll_4`, IDs 17/12) ficam de fora e apenas seguram a posição.
+
+As demais juntas (quadril roll, braços e pescoço) ainda não têm ID no barramento atual. Para ativar uma junta nova: adicione-a ao `joint_map` do `ax12_controller.py` (sem repetir ID!) e, se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do arquivo `.yaml` da marcha, na mesma ordem.
 
 ### `ax12_control/send_gait.py` — gerador de marcha
 
-Script cliente que publica a sequência de passos. Dois blocos:
+Script cliente que publica a sequência de passos. A marcha **não está escrita em Python**: vem de um arquivo `.yaml` lido em tempo de execução (ver [Marchas](#marchas-arquivos-yaml)), então trocar ou ajustar o movimento não exige editar nem recompilar o código.
 
-- **`ConexaoRobo`**: encapsula o nó ROS — cria o publisher de `/joint_trajectory` com o mesmo QoS do controlador, **assina `/hardware_errors`** (alertas do controlador aparecem no terminal) e expõe `enviar_passo(...)`, `aguardar_controlador()` e `esperar(...)`.
-- **`main()`**: contém a **matriz de movimento**, onde cada **linha é uma junta** (na mesma ordem de `nomes_juntas`) e cada **coluna é um passo** da trajetória (7 pontos). O fluxo:
-  1. valida a matriz (nº de linhas = nº de juntas, todas as linhas com o mesmo nº de colunas);
+- **`ConexaoRobo`**: encapsula o nó ROS — cria o publisher de `/joint_trajectory` com o mesmo QoS do controlador, **assina `/hardware_errors`** (alertas do controlador aparecem no terminal) e expõe `enviar_passo(...)`, `aguardar_controlador()` e `esperar(...)`. No `__init__`, lê o parâmetro ROS `matriz` (padrão `'otimizada'`) e resolve o caminho do arquivo via `resolver_caminho_matriz`.
+- **`resolver_caminho_matriz(nome)`**: transforma um nome simples (ex.: `cin_inve`) no caminho `<pasta do send_gait.py>/cin_inve.yaml`. Um caminho com pasta é usado como veio, para apontar a um arquivo fora do pacote.
+- **`carregar_marcha(caminho)`**: lê e **valida** o YAML antes de qualquer comando ir ao robô — chave faltando, `passo`/`pausa` inválidos, número de linhas da matriz diferente do número de juntas, ou linhas com tamanhos diferentes abortam o script com uma mensagem de erro, sem tocar no hardware.
+- **`main()`**:
+  1. carrega `nomes_juntas`, `matriz_movimento`, `passo` e `pausa` do arquivo escolhido — erro aqui aborta antes de conectar ao robô;
   2. **espera o `ax12_controller` aparecer na rede** antes do primeiro passo (sem isso, os primeiros comandos se perdem na descoberta do DDS);
-  3. em loop: lê a coluna atual, calcula a velocidade de cada junta como `|Δposição| / passo` (todas chegam ao alvo juntas), publica e espera `passo + pausa` segundos **processando a rede** (alertas chegam mesmo durante a pausa);
+  3. em loop: lê a coluna atual da matriz, calcula a velocidade de cada junta como `|Δposição| / passo` (todas chegam ao alvo juntas), publica e espera `passo + pausa` segundos **processando a rede** (alertas chegam mesmo durante a pausa);
   4. se o controlador publicar `FALHA FATAL` em `/hardware_errors`, a marcha **para sozinha** — não adianta mandar passos para um robô sem hardware.
 
-Para alterar a marcha, edite a `matriz_movimento` (valores em radianos) e/ou os tempos `passo` e `pausa`.
+Para trocar de marcha sem editar código:
+
+```bash
+ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
+```
 
 ### `ax12_control/ax12_monitor.py` — painel de telemetria
 
@@ -207,11 +246,47 @@ Mostra uma tabela atualizada 2×/s no terminal — ângulo, velocidade, torque (
 - **`controller_antigo.py`**: versão anterior do controlador que, além de escrever, **lia** a posição real dos motores a 10 Hz, publicava em `/joint_states` e reportava erros de hardware (ex.: sobrecarga) no tópico `/hardware_errors`. Usava QoS `RELIABLE/depth=10`, que se mostrou problemático no Wi-Fi.
 - **`send_antigo.py`**: cliente correspondente, com três listas separadas (tornozelo/joelho/quadril) em vez da matriz por junta.
 
-Esses arquivos ficam fora do módulo `ax12_control/` de propósito: não são instalados pelo build e servem só de referência (ex.: para reintroduzir a leitura de posição no futuro).
+Esses arquivos ficam fora do módulo `ax12_control/` de propósito: não são instalados pelo build e servem só de referência.
 
 ### `docs/bizuario_ros.md` — diagnóstico
 
 Cola de comandos do ROS 2 (`ros2 node list`, `ros2 topic info`, `ros2 topic echo`, …) e glossário de QoS, útil para depurar a comunicação entre as máquinas.
+
+## Marchas (arquivos `.yaml`)
+
+Cada arquivo descreve **um ciclo completo de marcha** e mora em `ax12_control/` — é instalado junto com o pacote (`setup.py` declara `package_data={'ax12_control': ['*.yaml']}` + `include_package_data=True`). Formato:
+
+```yaml
+passo: 1.0      # duração da transição entre duas poses (segundos)
+pausa: 0.5      # repouso extra após cada transição (segundos)
+
+nomes_juntas:             # nomes ROS, idênticos ao joint_map do ax12_controller
+  - PD_tornozelo_pitch_1
+  - PE_tornozelo_pitch_2
+  - ...
+
+matriz_movimento:         # 1 linha por junta (mesma ordem de nomes_juntas)
+  - [pos1, pos2, ...]     # 1 coluna por passo do ciclo, em RADIANOS
+  - ...
+```
+
+`carregar_marcha()` (em `send_gait.py`) exige que o nº de linhas da matriz seja igual ao nº de `nomes_juntas` e que todas as linhas tenham o mesmo nº de colunas.
+
+| Arquivo | Juntas | Descrição |
+|---|---|---|
+| `otimizada.yaml` (padrão) | 6 — pitches de tornozelo, joelho e quadril | Marcha ajustada manualmente. Os rolls de tornozelo (`*_roll_3`/`*_roll_4`) ficam de fora: recebem torque do controlador, mas não são comandados, ficando rígidos. |
+| `cin_inve.yaml` | 8 — inclui os rolls | Gerada a partir da cinemática inversa dos pés (`angulos.mat`/`angulos_rad`, 8 juntas × 4 etapas). Os rolls **entram** na marcha, comandados em 0 rad (centro). |
+
+Selecione com o parâmetro `matriz` (nome do arquivo, sem pasta nem extensão):
+
+```bash
+ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
+```
+
+Para criar uma marcha nova: copie um dos `.yaml` acima para `ax12_control/<nome>.yaml`, ajuste `nomes_juntas`, `matriz_movimento`, `passo` e `pausa`, recompile (`colcon build --packages-select ax12_control`) e rode com `-p matriz:=<nome>`.
+
+> [!NOTE]
+> A pasta `matrizes de movimento/` na raiz do repositório guarda as mesmas matrizes como origem/referência, incluindo `otimização.h` — um header C de um protótipo antigo com 18 motores, **não usado por este pacote ROS**. Os arquivos efetivamente lidos pelo `send_gait` são as cópias dentro de `ax12_control/`.
 
 ## Telemetria e visualização
 
@@ -235,6 +310,7 @@ A leitura usa o barramento junto com os comandos (8 motores × 5 Hz = 40 transa�
 - **Conversões** (feitas no controlador):
   - Posição: `goal = (rad + 2,618) × 1023 / 5,236`, saturada em 0–1023.
   - Velocidade: `vel = |rad/s| × 86,03`, saturada em 1–1023 (0 significaria "velocidade máxima" no AX-12, por isso o mínimo é 1).
+- **Marchas em `.yaml`**: o `send_gait` não tem mais nenhuma matriz hardcoded — `nomes_juntas`, `matriz_movimento`, `passo` e `pausa` vêm do arquivo selecionado pelo parâmetro `matriz` (ver [Marchas](#marchas-arquivos-yaml)).
 
 ## Solução de problemas
 
@@ -243,6 +319,8 @@ A leitura usa o barramento junto com os comandos (8 motores × 5 Hz = 40 transa�
 | `Falha ao abrir a porta!` | Porta errada ou sem permissão | Confira com `ls /dev/ttyACM*`; ajuste `DEVICENAME` no código. Permissão: `sudo usermod -aG dialout $USER` e relogue |
 | `send_gait` roda mas o robô não se mexe | Máquinas em domínios diferentes ou QoS incompatível | Confirme `echo $ROS_DOMAIN_ID` igual nos dois lados; `ros2 topic info /joint_trajectory -v` deve listar 1 publisher e 1 subscription |
 | `Package 'ax12_control' not found` | Workspace não carregado | `source ~/ax12_control_ws/install/setup.bash` (confira se está no `~/.bashrc`) |
+| `ERRO no arquivo de marcha (...)` | YAML malformado, chave faltando, ou matriz com nº de linhas/colunas inconsistente | Corrija o `.yaml` conforme [Marchas](#marchas-arquivos-yaml) — o script aborta antes de mexer no robô |
+| `arquivo de marcha nao encontrado` | Nome errado em `-p matriz:=...`, ou pacote não recompilado após adicionar um `.yaml` novo | Confira o nome (sem pasta/extensão) e rode `colcon build --packages-select ax12_control` |
 | Motores desligam ao ligar o torque | Fonte insuficiente para o pico de corrente | Verifique a fonte; o código já escalona o torque com 50 ms entre motores |
 | Nós não se enxergam no Wi-Fi | Firewall ou multicast bloqueado | Teste com `ros2 multicast receive/send`; libere o firewall (`sudo ufw allow in proto udp`) |
 
