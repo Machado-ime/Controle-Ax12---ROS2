@@ -87,19 +87,17 @@ class AX12HardwareInterface(Node):
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
 
         # Mapa das juntas (nome ROS -> ID do motor no barramento)
-        # Nomes seguem a convenção do URDF (adam.urdf): {lado}_{movimento}_{segmento}_{N}.
-        # O sufixo N é o ID de projeto no URDF e NÃO o ID físico do motor no barramento
-        # (ex.: pd_picht_tornozelo_3 é o motor de ID 18).
-        # O ID que vale é sempre o número à direita.
+        # Convenção: {lado}_{segmento}_{movimento}_{N} onde N é sequencial 1-8.
+        # O ID que vale é sempre o número à direita; NÃO confundir com o sufixo N.
         self.joint_map = {
-            'pd_picht_tornozelo_3': 18,
-            'pe_picht_tornozelo_4': 13,
-            'pd_roll_tornozelo_1': 17,   # ativos, mas fora da marcha padrão:
-            'pe_roll_tornozelo_2': 12,   # recebem torque e seguram a posição
-            'pd_picht_joelho_5': 16,
-            'pe_picht_joelho_6': 11,
-            'pd_picht_quadril_7': 15,
-            'pe_pich_quadril_8': 10,
+            'PD_tornozelo_pitch_1': 12,
+            'PE_tornozelo_pitch_2': 17,
+            'PD_tornozelo_roll_3': 13,   # ativos, mas fora da marcha atual:
+            'PE_tornozelo_roll_4': 18,   # recebem torque e seguram a posição
+            'PD_joelho_pitch_5': 11,
+            'PE_joelho_pitch_6': 16,
+            'PD_quadril_pitch_7': 10,
+            'PE_quadril_pitch_8': 15,
             # Juntas ainda sem ID no barramento atual (quadril roll, braços,
             # pescoço): adicione aqui quando forem ligadas — cuidado para
             # NÃO repetir um ID já usado acima (ID duplicado = dois nomes
@@ -112,14 +110,14 @@ class AX12HardwareInterface(Node):
         # Padrão = limite físico do AX-12 (±150° = ±2,618 rad).
         # Ajuste os valores conforme o alcance real de cada segmento do robô.
         self.joint_limits = {
-            'pd_picht_tornozelo_3': (-LIMITE_RAD, LIMITE_RAD),
-            'pe_picht_tornozelo_4': (-LIMITE_RAD, LIMITE_RAD),
-            'pd_roll_tornozelo_1':  (-LIMITE_RAD, LIMITE_RAD),
-            'pe_roll_tornozelo_2':  (-LIMITE_RAD, LIMITE_RAD),
-            'pd_picht_joelho_5':    (0.0,         LIMITE_RAD),   # joelho só dobra numa direção
-            'pe_picht_joelho_6':    (-LIMITE_RAD, 0.0),
-            'pd_picht_quadril_7':   (-LIMITE_RAD, LIMITE_RAD),
-            'pe_pich_quadril_8':    (-LIMITE_RAD, LIMITE_RAD),
+            'PD_tornozelo_pitch_1': (-LIMITE_RAD, LIMITE_RAD),
+            'PE_tornozelo_pitch_2': (-LIMITE_RAD, LIMITE_RAD),
+            'PD_tornozelo_roll_3':  (-LIMITE_RAD, LIMITE_RAD),
+            'PE_tornozelo_roll_4':  (-LIMITE_RAD, LIMITE_RAD),
+            'PD_joelho_pitch_5':    (0.0,         LIMITE_RAD),   # joelho só dobra numa direção
+            'PE_joelho_pitch_6':    (-LIMITE_RAD, 0.0),
+            'PD_quadril_pitch_7':   (-LIMITE_RAD, LIMITE_RAD),
+            'PE_quadril_pitch_8':   (-LIMITE_RAD, LIMITE_RAD),
         }
 
         # --- Estado da conexão serial ---
