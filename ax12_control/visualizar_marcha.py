@@ -16,9 +16,27 @@ import os
 
 import rclpy
 import yaml
-from ament_index_python.packages import get_package_share_directory
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
+
+# Pasta onde ficam as matrizes (.yaml): a mesma deste script — igual ao send_gait.
+# Os YAMLs viajam ao lado do módulo via package_data (ver setup.py).
+PASTA_MATRIZES = os.path.dirname(os.path.abspath(__file__))
+
+
+def resolver_caminho_matriz(nome: str) -> str:
+    """NOME da matriz -> caminho do .yaml ao lado deste script.
+
+    'cin_inve' / 'cin_inve.yaml' -> <pasta deste script>/cin_inve.yaml
+    '/outra/pasta/x.yaml'        -> usado como veio (já tem pasta).
+    """
+    nome = str(nome).strip()
+    if os.path.dirname(nome):
+        return nome
+    if not nome.lower().endswith(('.yaml', '.yml')):
+        nome += '.yaml'
+    return os.path.join(PASTA_MATRIZES, nome)
+
 
 # Nomes no YAML (convenção do código) → nomes no URDF (adam.urdf)
 _MAPA_URDF: dict[str, str] = {
@@ -43,8 +61,7 @@ class VisualizarMarcha(Node):
         matriz_nome = self.get_parameter('matriz').value
         passo_override: float = self.get_parameter('passo_s').value
 
-        pkg = get_package_share_directory('ax12_control')
-        yaml_path = os.path.join(pkg, f'{matriz_nome}.yaml')
+        yaml_path = resolver_caminho_matriz(matriz_nome)
         if not os.path.exists(yaml_path):
             self.get_logger().error(f'Arquivo de marcha não encontrado: {yaml_path}')
             return
