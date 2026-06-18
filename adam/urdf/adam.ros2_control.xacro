@@ -1,0 +1,123 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!--
+    Bloco ros2_control do Adam — 8 juntas motorizadas das pernas (AX-12).
+
+    use_mock_hardware:=true  -> mock_components/GenericSystem (sem hardware,
+                                o estado simplesmente espelha o comando).
+    use_mock_hardware:=false -> driver real adam_ax12_hardware/AX12System
+                                (Fase 4; ainda nao implementado).
+
+    Os nomes das juntas SAO os do URDF (adam.urdf). O driver real mapeia
+    cada nome -> ID do motor internamente (ver joint_map do ax12_controller):
+        pd_picht_tornozelo_3 -> 12   pe_picht_tornozelo_4 -> 17
+        pd_roll_tornozelo_1  -> 13   pe_roll_tornozelo_2  -> 18
+        pd_picht_joelho_5    -> 11   pe_picht_joelho_6    -> 16
+        pd_picht_quadril_7   -> 10   pe_pich_quadril_8    -> 15
+  -->
+  <xacro:macro name="adam_ros2_control" params="name use_mock_hardware:=true">
+
+    <ros2_control name="${name}" type="system">
+
+      <hardware>
+        <xacro:if value="${use_mock_hardware}">
+          <plugin>mock_components/GenericSystem</plugin>
+          <!-- estado de posicao espelha o comando 1:1 -->
+          <param name="mock_sensor_commands">false</param>
+          <param name="state_following_offset">0.0</param>
+        </xacro:if>
+        <xacro:unless value="${use_mock_hardware}">
+          <!-- Fase 4: driver C++ real do AX-12 (ainda nao existe) -->
+          <plugin>adam_ax12_hardware/AX12System</plugin>
+          <param name="usb_port">/dev/ttyUSB0</param>
+          <param name="baud_rate">1000000</param>
+        </xacro:unless>
+      </hardware>
+
+      <!-- ===================== PERNA DIREITA (PD) ===================== -->
+      <joint name="pd_picht_quadril_7">
+        <command_interface name="position">
+          <param name="min">-2.618</param>
+          <param name="max">2.618</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <joint name="pd_picht_joelho_5">
+        <command_interface name="position">
+          <param name="min">0.0</param>
+          <param name="max">2.618</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <joint name="pd_picht_tornozelo_3">
+        <command_interface name="position">
+          <param name="min">-1.4661</param>
+          <param name="max">0.5585</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <joint name="pd_roll_tornozelo_1">
+        <command_interface name="position">
+          <param name="min">-0.8727</param>
+          <param name="max">0.5934</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <!-- ===================== PERNA ESQUERDA (PE) ==================== -->
+      <joint name="pe_pich_quadril_8">
+        <command_interface name="position">
+          <param name="min">-2.618</param>
+          <param name="max">2.618</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <joint name="pe_picht_joelho_6">
+        <command_interface name="position">
+          <param name="min">-2.618</param>
+          <param name="max">0.0</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <joint name="pe_picht_tornozelo_4">
+        <command_interface name="position">
+          <param name="min">-0.5585</param>
+          <param name="max">1.4661</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+      <joint name="pe_roll_tornozelo_2">
+        <command_interface name="position">
+          <param name="min">-0.5934</param>
+          <param name="max">0.8727</param>
+        </command_interface>
+        <state_interface name="position">
+          <param name="initial_value">0.0</param>
+        </state_interface>
+      </joint>
+
+    </ros2_control>
+
+  </xacro:macro>
+</robot>

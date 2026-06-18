@@ -1,0 +1,51 @@
+# Controllers do Adam (ros2_control).
+#
+# - joint_state_broadcaster: publica /joint_states a partir do hardware
+#   (mock ou real) -> alimenta o robot_state_publisher e o RViz.
+# - perna_direita_controller / perna_esquerda_controller: um
+#   JointTrajectoryController por perna, batendo com os planning groups do
+#   MoveIt (perna_direita / perna_esquerda).
+#
+# Os nomes das juntas sao os do URDF (adam.urdf.xacro). Cada perna: cadeia
+# quadril(pitch) -> joelho(pitch) -> tornozelo(pitch) -> tornozelo(roll).
+
+controller_manager:
+  ros__parameters:
+    update_rate: 50  # Hz (compativel com o barramento serial do AX-12)
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    perna_direita_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    perna_esquerda_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+perna_direita_controller:
+  ros__parameters:
+    joints:
+      - pd_picht_quadril_7
+      - pd_picht_joelho_5
+      - pd_picht_tornozelo_3
+      - pd_roll_tornozelo_1
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
+
+perna_esquerda_controller:
+  ros__parameters:
+    joints:
+      - pe_pich_quadril_8
+      - pe_picht_joelho_6
+      - pe_picht_tornozelo_4
+      - pe_roll_tornozelo_2
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+    state_publish_rate: 50.0
+    action_monitor_rate: 20.0
