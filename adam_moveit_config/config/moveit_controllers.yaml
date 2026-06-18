@@ -1,0 +1,34 @@
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+
+moveit_manage_controllers: true
+
+trajectory_execution:
+  allowed_execution_duration_scaling: 1.2
+  allowed_goal_duration_margin: 0.5
+  allowed_start_tolerance: 0.01
+  execution_duration_monitoring: false
+
+moveit_simple_controller_manager:
+  controller_names:
+    - perna_direita_controller
+    - perna_esquerda_controller
+
+  perna_direita_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+      - pd_picht_quadril_7
+      - pd_picht_joelho_5
+      - pd_picht_tornozelo_3
+      - pd_roll_tornozelo_1
+
+  perna_esquerda_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints:
+      - pe_pich_quadril_8
+      - pe_picht_joelho_6
+      - pe_picht_tornozelo_4
+      - pe_roll_tornozelo_2

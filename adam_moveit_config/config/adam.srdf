@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot name="adam">
+
+  <!-- GRUPOS DE PLANEJAMENTO -->
+  <!-- Cadeia cinematica completa de cada perna: base_link -> pe/pd -->
+  <group name="perna_direita">
+    <chain base_link="base_link" tip_link="pd_pe"/>
+  </group>
+  <group name="perna_esquerda">
+    <chain base_link="base_link" tip_link="pe_pe"/>
+  </group>
+
+  <!-- JUNTAS PASSIVAS (existem na cadeia cinematica mas nao sao comandadas) -->
+  <!-- Hip roll: presentes no URDF mas sem atuador no mock -->
+  <passive_joint name="pd_roll_quadril_9"/>
+  <passive_joint name="pe_roll_quadril_10"/>
+  <!-- Bracos: sem controle nesta fase -->
+  <passive_joint name="bd_picht_ombro_11"/>
+  <passive_joint name="be_picht_ombro_12"/>
+  <passive_joint name="bd_roll_ombro_13"/>
+  <passive_joint name="be_roll_ombro_14"/>
+  <passive_joint name="bd_picht_cotovelo_15"/>
+  <passive_joint name="be_picht_cotovelo_16"/>
+
+  <!-- POSES NOMEADAS -->
+  <group_state name="repouso" group="perna_direita">
+    <joint name="pd_picht_quadril_7" value="0"/>
+    <joint name="pd_picht_joelho_5"  value="0"/>
+    <joint name="pd_picht_tornozelo_3" value="0"/>
+    <joint name="pd_roll_tornozelo_1"  value="0"/>
+  </group_state>
+  <group_state name="repouso" group="perna_esquerda">
+    <joint name="pe_pich_quadril_8"    value="0"/>
+    <joint name="pe_picht_joelho_6"    value="0"/>
+    <joint name="pe_picht_tornozelo_4" value="0"/>
+    <joint name="pe_roll_tornozelo_2"  value="0"/>
+  </group_state>
+
+  <!-- COLISOES DESABILITADAS -->
+  <!-- Adjacent: links diretamente conectados por uma junta -->
+  <disable_collisions link1="base_link"    link2="pd_quadril"    reason="Adjacent"/>
+  <disable_collisions link1="pd_quadril"   link2="pd_coxa"       reason="Adjacent"/>
+  <disable_collisions link1="pd_coxa"      link2="pd_canela"     reason="Adjacent"/>
+  <disable_collisions link1="pd_canela"    link2="pd_tornozelo"  reason="Adjacent"/>
+  <disable_collisions link1="pd_tornozelo" link2="pd_pe"         reason="Adjacent"/>
+  <disable_collisions link1="base_link"    link2="pe_quadril"    reason="Adjacent"/>
+  <disable_collisions link1="pe_quadril"   link2="pe_coxa"       reason="Adjacent"/>
+  <disable_collisions link1="pe_coxa"      link2="pe_canela"     reason="Adjacent"/>
+  <disable_collisions link1="pe_canela"    link2="pe_tornozelo"  reason="Adjacent"/>
+  <disable_collisions link1="pe_tornozelo" link2="pe_pe"         reason="Adjacent"/>
+  <disable_collisions link1="base_link"    link2="bd_ombro"      reason="Adjacent"/>
+  <disable_collisions link1="bd_ombro"     link2="bd_biceps"     reason="Adjacent"/>
+  <disable_collisions link1="bd_biceps"    link2="bd_antibraco"  reason="Adjacent"/>
+  <disable_collisions link1="base_link"    link2="be_ombro"      reason="Adjacent"/>
+  <disable_collisions link1="be_ombro"     link2="be_biceps"     reason="Adjacent"/>
+  <disable_collisions link1="be_biceps"    link2="be_antibraco"  reason="Adjacent"/>
+  <!-- Never: links que geometricamente nao se tocam -->
+  <disable_collisions link1="pd_pe"       link2="pe_pe"         reason="Never"/>
+  <disable_collisions link1="pd_pe"       link2="pe_coxa"       reason="Never"/>
+  <disable_collisions link1="pd_pe"       link2="pe_canela"     reason="Never"/>
+  <disable_collisions link1="pe_pe"       link2="pd_coxa"       reason="Never"/>
+  <disable_collisions link1="pe_pe"       link2="pd_canela"     reason="Never"/>
+  <disable_collisions link1="pd_quadril"  link2="pe_quadril"    reason="Never"/>
+  <disable_collisions link1="base_link"   link2="pd_coxa"       reason="Never"/>
+  <disable_collisions link1="base_link"   link2="pe_coxa"       reason="Never"/>
+
+</robot>

@@ -1,0 +1,43 @@
+# Sobrescreve limites do URDF para planejamento de trajetoria.
+# velocity_scaling_factor aplica um fator sobre max_velocity do URDF.
+joint_limits:
+  pd_picht_quadril_7:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+  pd_picht_joelho_5:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+  pd_picht_tornozelo_3:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+  pd_roll_tornozelo_1:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+  pe_pich_quadril_8:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+  pe_picht_joelho_6:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+  pe_picht_tornozelo_4:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
+  pe_roll_tornozelo_2:
+    has_velocity_limits: true
+    max_velocity: 6.0
+    has_acceleration_limits: true
+    max_acceleration: 5.0
