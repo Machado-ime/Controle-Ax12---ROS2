@@ -9,8 +9,8 @@
 #   matriz_movimento: 1 LINHA por junta, 1 COLUNA por etapa. Em RADIANOS.
 #
 # ATENÇÃO — rolls de tornozelo: ao contrário do otimizada.yaml (onde os rolls
-# ficam de fora e seguram a posição livremente), aqui pd_roll_tornozelo_1 e
-# pe_roll_tornozelo_2 ENTRAM na marcha comandados em 0.0 rad (centro), como
+# ficam de fora e seguram a posição livremente), aqui PD_tornozelo_roll_3 e
+# PE_tornozelo_roll_4 ENTRAM na marcha comandados em 0.0 rad (centro), como
 # vieram da cinemática inversa. Se preferir deixá-los livres, apague as 2
 # linhas de roll e os 2 nomes correspondentes.
 #
@@ -23,22 +23,22 @@ passo: 1.0
 pausa: 0.5
 
 nomes_juntas:
-  - pd_picht_tornozelo_3
-  - pe_picht_tornozelo_4
-  - pd_roll_tornozelo_1
-  - pe_roll_tornozelo_2
-  - pd_picht_joelho_5
-  - pe_picht_joelho_6
-  - pd_picht_quadril_7
-  - pe_pich_quadril_8
+  - PD_tornozelo_pitch_1
+  - PE_tornozelo_pitch_2
+  - PD_tornozelo_roll_3
+  - PE_tornozelo_roll_4
+  - PD_joelho_pitch_5
+  - PE_joelho_pitch_6
+  - PD_quadril_pitch_7
+  - PE_quadril_pitch_8
 
 matriz_movimento:
   #    pe_dir_frente   pe_esq_cima   pe_esq_frente   pe_dir_cima
-  - [-0.235500,      -0.727600,     -0.947100,      -1.207900]  # pd_picht_tornozelo_3
-  - [ 0.947100,       1.207900,      0.235500,       0.727600]  # pe_picht_tornozelo_4
-  - [ 0.000000,       0.000000,      0.000000,       0.000000]  # pd_roll_tornozelo_1
-  - [ 0.000000,       0.000000,      0.000000,       0.000000]  # pe_roll_tornozelo_2
-  - [ 1.200200,       1.456600,      1.171100,       2.410600]  # pd_picht_joelho_5
-  - [-1.171000,      -2.410600,     -1.200200,      -1.456600]  # pe_picht_joelho_6
-  - [-0.964700,      -0.729000,     -0.223900,      -1.202700]  # pd_picht_quadril_7
-  - [ 0.223900,       1.202700,      0.964700,       0.729000]  # pe_pich_quadril_8
+  - [-0.235500,      -0.727600,     -0.947100,      -1.207900]  # PD_tornozelo_pitch_1
+  - [ 0.947100,       1.207900,      0.235500,       0.727600]  # PE_tornozelo_pitch_2
+  - [ 0.000000,       0.000000,      0.000000,       0.000000]  # PD_tornozelo_roll_3
+  - [ 0.000000,       0.000000,      0.000000,       0.000000]  # PE_tornozelo_roll_4
+  - [ 1.200200,       1.456600,      1.171100,       2.410600]  # PD_joelho_pitch_5
+  - [-1.171000,      -2.410600,     -1.200200,      -1.456600]  # PE_joelho_pitch_6
+  - [-0.964700,      -0.729000,     -0.223900,      -1.202700]  # PD_quadril_pitch_7
+  - [ 0.223900,       1.202700,      0.964700,       0.729000]  # PE_quadril_pitch_8
