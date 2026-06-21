@@ -20,6 +20,11 @@ arquivo: ver `git log`.
   enxuto, `docs/install.md`, `docs/troubleshooting.md`, `docs/ref/`, `docs/adr.md`, `AGENTS.md`
   e arquivos de saúde da comunidade em `.github/`.
 
+### Alterado
+- Todo o código movido para `src/`: o pacote ROS inteiro (`package.xml`, `setup.py`, `launch/`
+  e o módulo Python) agora vive em `src/ax12_control/`, e o `legacy/` em `src/legacy/`. O
+  `colcon` encontra o pacote recursivamente, então o comando de build não muda.
+
 ### Corrigido
 - `ax12_controller.py`: `joint_map`/`joint_limits` estavam com nomes de junta no padrão antigo
   (pré-URDF), o que descartava silenciosamente todos os comandos de marcha — revertido para o

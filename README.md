@@ -50,30 +50,36 @@ Controle-Ax12---ROS2/
 ├── README.md                 # este arquivo — quickstart
 ├── LICENSE
 ├── .github/                  # CODEOWNERS, templates de issue/PR, CONTRIBUTING
-├── ax12_control/
-│   ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
-│   ├── send_gait.py         # gerador de marcha (PC de comando)
-│   ├── ax12_monitor.py      # painel de telemetria no terminal (PC)
-│   ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
-│   ├── passo_slider.py      # janela Qt p/ escolher a etapa da marcha manualmente
-│   ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2, MoveIt)
-│   ├── adam.rviz            # config RViz pré-configurado para o Adam
-│   ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
-│   └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
-├── launch/
-│   └── visualizar_marcha.launch.py
-├── docs/
-│   ├── install.md           # tutorial: instalação + primeira execução
-│   ├── troubleshooting.md   # guia: problemas conhecidos e soluções
-│   ├── adr.md                # explicação: diário de bordo do projeto
-│   └── ref/                  # referência: links externos e cola de comandos
-│       ├── referencias-ax12.md
-│       └── comandos-ros.md
-├── matrizes-de-movimento/    # origem/referência das marchas (não instalado no build)
-├── legacy/                   # versões antigas para referência histórica
-├── package.xml
-└── setup.py
+├── src/
+│   ├── ax12_control/          # o pacote ROS (package.xml, setup.py, launch/, código)
+│   │   ├── package.xml
+│   │   ├── setup.py
+│   │   ├── launch/
+│   │   │   └── visualizar_marcha.launch.py
+│   │   └── ax12_control/      # módulo Python (nome repetido = convenção ament_python)
+│   │       ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
+│   │       ├── send_gait.py         # gerador de marcha (PC de comando)
+│   │       ├── ax12_monitor.py      # painel de telemetria no terminal (PC)
+│   │       ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
+│   │       ├── passo_slider.py      # janela Qt p/ escolher a etapa da marcha manualmente
+│   │       ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2, MoveIt)
+│   │       ├── adam.rviz            # config RViz pré-configurado para o Adam
+│   │       ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
+│   │       └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
+│   ├── legacy/                 # versões antigas para referência histórica
+│   └── matrizes-de-movimento/  # origem/referência das marchas (não instalado no build)
+└── docs/
+    ├── install.md           # tutorial: instalação + primeira execução
+    ├── troubleshooting.md   # guia: problemas conhecidos e soluções
+    ├── adr.md                # explicação: diário de bordo do projeto
+    └── ref/                  # referência: links externos e cola de comandos
+        ├── referencias-ax12.md
+        └── comandos-ros.md
 ```
+
+> O `colcon` encontra o pacote recursivamente — clonar este repositório dentro do `src/` de
+> um workspace funciona normalmente, mesmo com o `src/` extra deste repositório (vira
+> `<workspace>/src/Controle-Ax12---ROS2/src/ax12_control/`).
 
 ## Estrutura ROS
 
