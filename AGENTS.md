@@ -10,9 +10,9 @@ dentro.
 
 ## Como buildar e rodar
 
-Todo o código fica em `src/ax12_control/` (layout `<repo>/src/<pacote>/`, como um workspace
-ROS comum). Buildar a partir da raiz do repositório funciona normalmente — o `colcon`
-encontra o `package.xml` recursivamente, não importa a profundidade:
+O repositório inteiro é um mini-workspace: `src/ax12_control/`, `src/adam/` e
+`src/adam_moveit_config/` são 3 pacotes ROS lado a lado. Buildar a partir da raiz do
+repositório funciona normalmente — o `colcon` encontra cada `package.xml` recursivamente:
 
 ```bash
 colcon build --packages-select ax12_control
@@ -40,18 +40,20 @@ Não há suíte de testes própria além dos checks padrão do `ament` (`ament_f
 
 ## Mapa do repositório
 
-- `src/ax12_control/` — o pacote ROS inteiro: `package.xml`, `setup.py`, `launch/` e o módulo
-  Python `ax12_control/` (nós, matrizes de marcha `*.yaml` usadas em runtime).
-- `src/legacy/` — versões antigas, mantidas só como referência histórica. Não usar nem editar.
+Este repositório é um mini-workspace com 3 pacotes ROS lado a lado em `src/`:
+
+- `src/ax12_control/` — o pacote deste README/AGENTS: `package.xml`, `setup.py`, `launch/` e o
+  módulo Python `ax12_control/` (nós, matrizes de marcha `*.yaml` usadas em runtime).
+- `src/adam/` — pacote `ament_cmake` com URDF, meshes e launch files do robô Adam.
+- `src/adam_moveit_config/` — pacote MoveIt2 gerado (planning groups, SRDF, controllers).
 - `src/matrizes-de-movimento/` — matrizes de marcha originais/fonte (MATLAB), não instaladas
   pelo build; as cópias usadas em runtime estão em `src/ax12_control/ax12_control/*.yaml`.
 - `docs/` — documentação: `install.md` (tutorial), `troubleshooting.md` (guia),
-  `ref/` (referência), `adr.md` (explicação/diário de bordo).
+  `ref/` (referência), `adr.md` (explicação/diário de bordo). Documenta principalmente o
+  pacote `ax12_control`; `adam`/`adam_moveit_config` ainda não têm docs próprias aqui.
 
 ## Regras importantes
 
-- O pacote `adam` (URDF, meshes, `ros2_control`) mora em outro workspace/repositório — não
-  existe dentro deste repo. Não invente caminhos para ele.
 - `package.xml` e `setup.py` (em `src/ax12_control/`) declaram as dependências reais — ao
   adicionar um nó/launch novo que importa um pacote ROS, declare a dependência ali também.
 - Atualize o README e o `CHANGELOG.md` no mesmo PR que muda comportamento visível.

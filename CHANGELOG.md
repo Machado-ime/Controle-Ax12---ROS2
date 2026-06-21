@@ -22,8 +22,15 @@ arquivo: ver `git log`.
 
 ### Alterado
 - Todo o código movido para `src/`: o pacote ROS inteiro (`package.xml`, `setup.py`, `launch/`
-  e o módulo Python) agora vive em `src/ax12_control/`, e o `legacy/` em `src/legacy/`. O
-  `colcon` encontra o pacote recursivamente, então o comando de build não muda.
+  e o módulo Python) agora vive em `src/ax12_control/`. O `colcon` encontra o pacote
+  recursivamente, então o comando de build não muda.
+- `adam/` e `adam_moveit_config/` (que viviam na raiz do repositório) movidos para
+  `src/adam/` e `src/adam_moveit_config/`, junto do `ax12_control` — o repositório agora é um
+  mini-workspace com os 3 pacotes lado a lado em `src/`.
+
+### Removido
+- `legacy/` (`controller_antigo.py`, `send_antigo.py`) e os protótipos `AX12Controller_v1.py`/
+  `AX12Controller_v2.py` — sem valor de referência, removidos em vez de arquivados.
 
 ### Corrigido
 - `ax12_controller.py`: `joint_map`/`joint_limits` estavam com nomes de junta no padrão antigo
@@ -31,3 +38,6 @@ arquivo: ver `git log`.
   padrão de nomes do URDF, que é o que `send_gait` realmente publica.
 - `display.launch.py` (pacote `adam`): `joint_state_publisher_gui` agora é condicional
   (`use_gui_sliders`), evitando conflito com o `/joint_states` real ao espelhar o robô.
+- Build quebrado: um achatamento manual de `src/ax12_control/ax12_control/*` para `src/*`
+  tirou a pasta que o `setup.py` espera para o módulo Python — `colcon build` falhava com
+  `can't copy 'ax12_control/adam.rviz': doesn't exist`. Estrutura de pacote restaurada.
