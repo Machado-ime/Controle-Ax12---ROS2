@@ -86,22 +86,26 @@ class AX12HardwareInterface(Node):
         self.velocidade_padrao = self.get_parameter('velocidade_padrao').value
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
 
-        # Mapa das juntas (nome ROS -> ID do motor no barramento)
-        # Convenção: {lado}_{segmento}_{movimento}_{N} onde N é sequencial 1-8.
-        # O ID que vale é sempre o número à direita; NÃO confundir com o sufixo N.
+        # Mapa das juntas (nome ROS -> ID do motor no barramento).
+        # Nomes seguem a convenção do URDF (adam.urdf): {lado}_{movimento}_{segmento}_{N}.
+        # O sufixo N é o ID de projeto no URDF e NÃO o ID físico do motor no
+        # barramento (ex.: pd_picht_tornozelo_3 é o motor de ID 12).
+        # O ID que vale é sempre o número à direita.
         self.joint_map = {
-            'PD_tornozelo_pitch_1': 12,
-            'PE_tornozelo_pitch_2': 17,
-            'PD_tornozelo_roll_3': 13,   # ativos, mas fora da marcha atual:
-            'PE_tornozelo_roll_4': 18,   # recebem torque e seguram a posição
-            'PD_joelho_pitch_5': 11,
-            'PE_joelho_pitch_6': 16,
-            'PD_quadril_pitch_7': 10,
-            'PE_quadril_pitch_8': 15,
-            # Juntas ainda sem ID no barramento atual (quadril roll, braços,
-            # pescoço): adicione aqui quando forem ligadas — cuidado para
-            # NÃO repetir um ID já usado acima (ID duplicado = dois nomes
-            # comandando o mesmo motor físico).
+            'pd_picht_tornozelo_3': 12,
+            'pe_picht_tornozelo_4': 17,
+            'pd_roll_tornozelo_1': 13,   # ativos, mas fora da marcha atual:
+            'pe_roll_tornozelo_2': 18,   # recebem torque e seguram a posição
+            'pd_picht_joelho_5': 11,
+            'pe_picht_joelho_6': 16,
+            'pd_picht_quadril_7': 10,
+            'pe_pich_quadril_8': 15,
+            'pd_roll_quadril_9': 9,      # quadril roll: novo, sem medição ainda
+            'pe_roll_quadril_10': 14,    # (fora da marcha; segura posição)
+            # Juntas ainda sem ID no barramento atual (braços, pescoço):
+            # adicione aqui quando forem ligadas — cuidado para NÃO repetir
+            # um ID já usado acima (ID duplicado = dois nomes comandando o
+            # mesmo motor físico).
         }
         self.active_ids = list(self.joint_map.values())
 
@@ -111,14 +115,16 @@ class AX12HardwareInterface(Node):
         # PD (direito) e PE (esquerdo) são espelhados: os limites de PE são
         # (lo, hi) direto da medição; PD recebe (-hi, -lo) para refletir a montagem.
         self.joint_limits = {
-            'PD_tornozelo_pitch_1': (-1.4661,     0.5585),  # espelho de PE
-            'PE_tornozelo_pitch_2': (-0.5585,     1.4661),  # (118°,234°) → (-32°,+84°)
-            'PD_tornozelo_roll_3':  (-0.8727,     0.5934),  # espelho de PE
-            'PE_tornozelo_roll_4':  (-0.5934,     0.8727),  # (116°,200°) → (-34°,+50°)
-            'PD_joelho_pitch_5':    (0.0,         LIMITE_RAD),  # (150°,300°) → (0°,+150°)
-            'PE_joelho_pitch_6':    (-LIMITE_RAD, 0.0),         # espelho de PD
-            'PD_quadril_pitch_7':   (-LIMITE_RAD, LIMITE_RAD),  # sem medição ainda
-            'PE_quadril_pitch_8':   (-LIMITE_RAD, LIMITE_RAD),
+            'pd_picht_tornozelo_3': (-1.4661,     0.5585),  # espelho de PE
+            'pe_picht_tornozelo_4': (-0.5585,     1.4661),  # (118°,234°) → (-32°,+84°)
+            'pd_roll_tornozelo_1':  (-0.8727,     0.5934),  # espelho de PE
+            'pe_roll_tornozelo_2':  (-0.5934,     0.8727),  # (116°,200°) → (-34°,+50°)
+            'pd_picht_joelho_5':    (0.0,         LIMITE_RAD),  # (150°,300°) → (0°,+150°)
+            'pe_picht_joelho_6':    (-LIMITE_RAD, 0.0),         # espelho de PD
+            'pd_picht_quadril_7':   (-LIMITE_RAD, LIMITE_RAD),  # sem medição ainda
+            'pe_pich_quadril_8':    (-LIMITE_RAD, LIMITE_RAD),
+            'pd_roll_quadril_9':    (-LIMITE_RAD, LIMITE_RAD),  # sem medição ainda
+            'pe_roll_quadril_10':   (-LIMITE_RAD, LIMITE_RAD),
         }
 
         # --- Estado da conexão serial ---

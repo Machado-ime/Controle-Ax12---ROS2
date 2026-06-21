@@ -33,6 +33,8 @@ setup(
             'send_gait = ax12_control.send_gait:main',
             'ax12_monitor = ax12_control.ax12_monitor:main',
             'visualizar_marcha = ax12_control.visualizar_marcha:main',
+            'gait_bridge = ax12_control.gait_bridge:main',
+            'passo_slider = ax12_control.passo_slider:main',
         ],
     },
 )

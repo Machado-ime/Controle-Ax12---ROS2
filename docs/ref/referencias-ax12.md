@@ -1,10 +1,10 @@
 # Referências — controle do AX-12
 
-Coletânea de repositórios e documentação úteis para o controle dos servos Dynamixel AX-12 (Protocolo 1.0). Serve de ponto de partida ao consultar dúvidas de hardware, SDK ou marcha.
+Coletânea de repositórios e documentação úteis para o controle dos servos Dynamixel AX-12 (Protocolo 1.0) e para o restante da stack do digital twin (ros2_control, MoveIt2, RViz/Qt). Serve de ponto de partida ao consultar dúvidas de hardware, SDK, marcha ou visualização.
 
-> **Stack deste projeto:** `dynamixel_sdk` (Python) + `GroupSyncWrite` + Protocolo 1.0, sob ROS 2 Jazzy. As referências mais alinhadas estão marcadas com ⭐.
+> **Stack deste projeto:** `dynamixel_sdk` (Python) + `GroupSyncWrite` + Protocolo 1.0 sob ROS 2 Jazzy, mais `ros2_control` (mock + futuro driver real), MoveIt2 (planejamento, ainda não gerado) e PyQt5/`python_qt_binding` (slider de passo). As referências mais alinhadas estão marcadas com ⭐.
 
-- **Data da última atualização:** 2026-06-16
+- **Data da última atualização:** 2026-06-19
 
 ---
 
@@ -49,8 +49,35 @@ Coletânea de repositórios e documentação úteis para o controle dos servos D
 | [AshwinderPalSingh/ros2-2D-humanoid-simulation](https://github.com/AshwinderPalSingh/ros2-2D-humanoid-simulation) | Simulador 2D educacional de humanoide com marcha coordenada, em Python puro e em ROS 2. Bom para prototipar marcha antes do hardware. |
 | [leggedrobotics/free_gait](https://github.com/leggedrobotics/free_gait) | Arquitetura versátil para controle de robôs com pernas (ETH Zürich). Conceitos de planejamento de passo. |
 | [DRCL-USC/Hector_Simulation](https://github.com/DRCL-USC/Hector_Simulation) | Locomoção bípede via MPC baseado em força/momento (ROS/MATLAB). Referência avançada de controle. |
+| ⭐ [well-robotics/STRIDE](https://github.com/well-robotics/STRIDE) ([artigo](https://arxiv.org/pdf/2407.02648)) | Plataforma bípede open-source de baixo custo (<US$2000) para pesquisa/ensino, peças off-the-shelf. Escala/objetivo muito parecidos com o Adam — boa referência de arquitetura mecânica + software. |
+| [MEVITA](https://arxiv.org/pdf/2508.17684) | Robô bípede open-source montado com componentes de e-commerce + chapa metálica soldada. Referência de design de baixo custo/DIY, mesma filosofia do Adam. |
+| [OpenWalker (ROSIN)](https://www.rosin-project.eu/ftp/open-source-balancing-and-walking-control-framework-for-humanoid-robots-in-ros-openwalker) | Framework de balanço/marcha para humanoides baseado em `ros_control`, com módulos prontos para prototipagem rápida de controladores de marcha. |
 
-## 5. Tutoriais e leitura
+## 5. ros2_control, MoveIt2 e visualização (RViz/Qt)
+
+> Stack do "digital twin" (visualizar_marcha, gait_bridge, mock.launch.py, adam.ros2_control.xacro). Ainda em mock; vira referência obrigatória nas Fases 2–4 do plano (MoveIt2 + driver real).
+
+| Recurso | Descrição |
+|---|---|
+| ⭐ [Mock Components — ros2_control docs](https://control.ros.org/jazzy/doc/ros2_control/hardware_interface/doc/mock_components_userdoc.html) | Documenta o `mock_components/GenericSystem` usado em `adam.ros2_control.xacro` enquanto o driver real (Fase 4) não existe. |
+| ⭐ [joint_trajectory_controller — ros2_control docs](https://control.ros.org/jazzy/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html) | Controller usado em `perna_direita_controller`/`perna_esquerda_controller` (`ros2_controllers.yaml`); explica `allow_partial_joints_goal`, interpolação e tolerâncias. |
+| [joint_state_broadcaster — ros2_control docs](https://control.ros.org/jazzy/doc/ros2_controllers/joint_state_broadcaster/doc/userdoc.html) | Publica `/joint_states` a partir do hardware (mock ou real) — alimenta `robot_state_publisher` e o RViz em `mock.launch.py`. |
+| [ros2_control hardware interface types](https://control.ros.org/rolling/doc/ros2_control/hardware_interface/doc/hardware_interface_types_userdoc.html) | Tipos `SystemInterface`/`ActuatorInterface`/`SensorInterface` — referência direta para o `adam_ax12_hardware/AX12System` da Fase 4. |
+| ⭐ [MoveIt Setup Assistant — tutorial](https://moveit.picknik.ai/main/doc/examples/setup_assistant/setup_assistant_tutorial.html) | Passo a passo para gerar o `adam_moveit_config` (Fase 2, ainda pendente): planning groups, SRDF, matriz de auto-colisão. |
+| [moveit_configs_utils (MoveItConfigsBuilder)](https://moveit.picknik.ai/main/api/html/namespacemoveit__configs__builder.html) | API para carregar o pacote MoveIt gerado dentro de um launch file Python — usar ao escrever o `demo.launch.py` da Fase 3. |
+| [Using Xacro to clean up your code — ROS 2 docs](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/URDF/Using-Xacro-to-Clean-Up-a-URDF-File.html) | Base do `adam.urdf.xacro`/`adam.ros2_control.xacro` (macros, `xacro:arg`, `xacro:if`/`xacro:unless`). |
+| [python_qt_binding — index.ros.org](https://index.ros.org/p/python_qt_binding/) | Binding Qt "oficial" do ROS 2 (usado com fallback para PyQt5 puro em `passo_slider.py`). |
+| [RViz empty/black no WSL — ros2/rviz#834](https://github.com/ros2/rviz/issues/834) | Mesmo sintoma do Fase 0 deste projeto (tela cinza/preta no WSLg); a solução aplicada (`QT_QPA_PLATFORM=xcb` + `LIBGL_ALWAYS_SOFTWARE=1`) segue essa linha de troubleshooting. |
+| [rmw_cyclonedds_cpp — package docs](https://index.ros.org/p/rmw_cyclonedds_cpp/) | RMW usado via `SetEnvironmentVariable('RMW_IMPLEMENTATION', 'rmw_cyclonedds_cpp')` em `mock.launch.py` para evitar a incompatibilidade de ABI entre `libfastrtps`/`libfastcdr`. |
+
+## 6. Mensagens de diagnóstico
+
+| Recurso | Descrição |
+|---|---|
+| [diagnostic_msgs — docs.ros.org](https://docs.ros.org/en/ros2_packages/humble/api/diagnostic_msgs/) | `DiagnosticArray`/`DiagnosticStatus`/`KeyValue` publicados pelo `ax12_controller.py` (`/diagnostics`) e consumidos pelo `ax12_monitor.py`. |
+| [A Practical Guide to Using ROS Diagnostics — Foxglove](https://foxglove.dev/blog/a-practical-guide-to-using-ros-diagnostics) | Convenções de uso (níveis OK/WARN/ERROR/STALE, agregação) — útil se este projeto migrar para `diagnostic_updater`/`diagnostic_aggregator` em vez de montar o `DiagnosticArray` à mão. |
+
+## 7. Tutoriais e leitura
 
 | Recurso | Descrição |
 |---|---|

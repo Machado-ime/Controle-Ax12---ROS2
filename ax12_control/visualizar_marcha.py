@@ -2,43 +2,33 @@
 """
 Publica JointState a partir de um YAML de marcha para visualização no RViz.
 
-Inicie via launch file:
-    ros2 launch ax12_control visualizar_marcha.launch.py \
-        urdf:=/caminho/para/adam.urdf \
-        matriz:=cin_inve
+Juntas presentes na matriz recebem os ângulos do ciclo.
+Juntas do URDF ausentes na matriz são publicadas em 0 rad.
 
 Parâmetros ROS:
-    matriz   (str)   — arquivo de marcha sem extensão (padrão: cin_inve)
-    passo_s  (float) — tempo por passo em segundos; 0 = usa o valor do YAML
+    matriz            (str)   — arquivo de marcha sem extensão (padrão: cin_inve)
+    passo_s           (float) — segundos por passo em modo automático;
+                                0.0 (padrão) = modo manual
+    robot_description (str)   — conteúdo do URDF (passado pelo launch file)
+
+Modos de operação:
+    Automático (passo_s > 0): timer avança os passos no intervalo configurado.
+    Manual     (passo_s = 0): aguarda mensagem Int32 em /passo_marcha.
+                              O número indica o índice do passo (0-based).
+                              Exemplo:
+                                ros2 topic pub --once /passo_marcha std_msgs/msg/Int32 "data: 2"
 """
 
 import os
+import xml.etree.ElementTree as ET
 
 import rclpy
 import yaml
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Int32
 
-# Pasta onde ficam as matrizes (.yaml): a mesma deste script — igual ao send_gait.
-# Os YAMLs viajam ao lado do módulo via package_data (ver setup.py).
-PASTA_MATRIZES = os.path.dirname(os.path.abspath(__file__))
-
-
-def resolver_caminho_matriz(nome: str) -> str:
-    """NOME da matriz -> caminho do .yaml ao lado deste script.
-
-    'cin_inve' / 'cin_inve.yaml' -> <pasta deste script>/cin_inve.yaml
-    '/outra/pasta/x.yaml'        -> usado como veio (já tem pasta).
-    """
-    nome = str(nome).strip()
-    if os.path.dirname(nome):
-        return nome
-    if not nome.lower().endswith(('.yaml', '.yml')):
-        nome += '.yaml'
-    return os.path.join(PASTA_MATRIZES, nome)
-
-
-# Nomes no YAML (convenção do código) → nomes no URDF (adam.urdf)
+# Nomes legados (antes da padronização URDF) → nomes atuais
 _MAPA_URDF: dict[str, str] = {
     'PD_tornozelo_pitch_1': 'pd_picht_tornozelo_3',
     'PE_tornozelo_pitch_2': 'pe_picht_tornozelo_4',
@@ -51,17 +41,31 @@ _MAPA_URDF: dict[str, str] = {
 }
 
 
+def _juntas_do_urdf(urdf_str: str) -> list[str]:
+    """Retorna nomes de todas as juntas não-fixas do URDF."""
+    try:
+        root = ET.fromstring(urdf_str)
+        return [name for j in root.findall('joint')
+                if j.get('type', 'fixed') != 'fixed'
+                and (name := j.get('name'))]
+    except ET.ParseError:
+        return []
+
+
 class VisualizarMarcha(Node):
     def __init__(self) -> None:
         super().__init__('visualizar_marcha')
 
         self.declare_parameter('matriz', 'cin_inve')
         self.declare_parameter('passo_s', 0.0)
+        self.declare_parameter('robot_description', '')
 
         matriz_nome = self.get_parameter('matriz').value
-        passo_override: float = self.get_parameter('passo_s').value
+        passo_s: float = self.get_parameter('passo_s').value
+        urdf_str: str = self.get_parameter('robot_description').value
 
-        yaml_path = resolver_caminho_matriz(matriz_nome)
+        pasta = os.path.dirname(os.path.abspath(__file__))
+        yaml_path = os.path.join(pasta, f'{matriz_nome}.yaml')
         if not os.path.exists(yaml_path):
             self.get_logger().error(f'Arquivo de marcha não encontrado: {yaml_path}')
             return
@@ -74,29 +78,54 @@ class VisualizarMarcha(Node):
         self._n_passos: int = len(self._matriz[0])
         self._passo_atual: int = 0
 
-        passo_s = passo_override if passo_override > 0.0 else float(marcha.get('passo', 1.0))
+        nomes_urdf = [_MAPA_URDF.get(n, n) for n in nomes_yaml]
 
-        self._nomes_urdf: list[str] = []
-        for nome in nomes_yaml:
-            urdf_nome = _MAPA_URDF.get(nome, nome)
-            if urdf_nome == nome and nome not in _MAPA_URDF:
-                self.get_logger().warn(
-                    f'"{nome}" sem mapeamento URDF — publicando com esse nome mesmo.')
-            self._nomes_urdf.append(urdf_nome)
+        todas_juntas_urdf = _juntas_do_urdf(urdf_str)
+        if not todas_juntas_urdf:
+            self.get_logger().warn(
+                'URDF não recebido ou inválido — publicando só as juntas da matriz.')
+
+        extras = [j for j in todas_juntas_urdf if j not in nomes_urdf]
+        self._nomes_pub: list[str] = nomes_urdf + extras
+        self._n_matriz = len(nomes_urdf)
 
         self._pub = self.create_publisher(JointState, '/joint_states', 10)
-        self._timer = self.create_timer(passo_s, self._tick)
 
-        self.get_logger().info(
-            f'Marcha "{matriz_nome}" — {self._n_passos} passos, {passo_s:.2f}s/passo.')
+        # Subscriber para controle manual de passo
+        self.create_subscription(Int32, '/passo_marcha', self._on_passo, 10)
 
-    def _tick(self) -> None:
+        if passo_s > 0.0:
+            self.create_timer(passo_s, self._tick_auto)
+            self.get_logger().info(
+                f'Marcha "{matriz_nome}" — {self._n_passos} passos, {passo_s:.2f}s/passo '
+                f'[automático]. {len(extras)} junta(s) extra(s) fixadas em 0.')
+        else:
+            # Publica o passo 0 imediatamente para o RViz mostrar a pose inicial
+            self._publicar()
+            self.get_logger().info(
+                f'Marcha "{matriz_nome}" — {self._n_passos} passos [manual]. '
+                f'Controle via: ros2 topic pub --once /passo_marcha std_msgs/msg/Int32 "data: N"'
+                f'\n  N vai de 0 a {self._n_passos - 1}. '
+                f'{len(extras)} junta(s) extra(s) fixadas em 0.')
+
+    def _publicar(self) -> None:
         msg = JointState()
         msg.header.stamp = self.get_clock().now().to_msg()
-        msg.name = self._nomes_urdf
-        msg.position = [float(linha[self._passo_atual]) for linha in self._matriz]
+        msg.name = self._nomes_pub
+        msg.position = (
+            [float(linha[self._passo_atual]) for linha in self._matriz]
+            + [0.0] * (len(self._nomes_pub) - self._n_matriz)
+        )
         self._pub.publish(msg)
+
+    def _tick_auto(self) -> None:
+        self._publicar()
         self._passo_atual = (self._passo_atual + 1) % self._n_passos
+
+    def _on_passo(self, msg: Int32) -> None:
+        self._passo_atual = max(0, min(msg.data, self._n_passos - 1))
+        self._publicar()
+        self.get_logger().info(f'Passo {self._passo_atual}/{self._n_passos - 1}')
 
 
 def main(args=None) -> None:
