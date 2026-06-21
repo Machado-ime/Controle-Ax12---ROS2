@@ -1,8 +1,7 @@
 # src/ — pacotes ROS 2 do Adam
 
 Esta pasta é um mini-workspace: 3 pacotes ROS 2 lado a lado, prontos para `colcon build` a
-partir da raiz do repositório (veja o [README principal](../README.md)). Mais um pacote
-auxiliar com dados de referência (`matrizes-de-movimento/`), que não entra no build.
+partir da raiz do repositório (veja o [README principal](../README.md)).
 
 ## Organograma
 
@@ -49,22 +48,17 @@ src/
 │       ├── gazebo.launch.py      # Gazebo (legado, não mantido)
 │       └── display.launch        # launch ROS1 (legado, não mantido)
 │
-├── adam_moveit_config/            # pacote: configuração MoveIt2 (gerado pelo Setup Assistant)
-│   ├── package.xml
-│   ├── CMakeLists.txt
-│   ├── config/
-│   │   ├── adam.srdf
-│   │   ├── kinematics.yaml
-│   │   ├── joint_limits.yaml
-│   │   └── moveit_controllers.yaml
-│   └── launch/
-│       ├── demo.launch.py        # digital twin completo: mock + MoveIt2 + RViz
-│       └── move_group.launch.py  # só o move_group (assume mock.launch.py já rodando)
-│
-└── matrizes-de-movimento/         # dados de origem das marchas (referência, não compilado)
-    ├── cin_inve.yaml
-    ├── otimizada.yaml
-    └── otimizacao.h               # header C de protótipo legado (18 motores)
+└── adam_moveit_config/            # pacote: configuração MoveIt2 (gerado pelo Setup Assistant)
+    ├── package.xml
+    ├── CMakeLists.txt
+    ├── config/
+    │   ├── adam.srdf
+    │   ├── kinematics.yaml
+    │   ├── joint_limits.yaml
+    │   └── moveit_controllers.yaml
+    └── launch/
+        ├── demo.launch.py        # digital twin completo: mock + MoveIt2 + RViz
+        └── move_group.launch.py  # só o move_group (assume mock.launch.py já rodando)
 ```
 
 ## Cada pacote em detalhe
@@ -113,12 +107,6 @@ Gerado pelo MoveIt Setup Assistant a partir do `adam_urdf`. Configura os plannin
 | `moveit_controllers.yaml` | Liga o MoveIt2 aos `JointTrajectoryController`s definidos em `adam_urdf/config/ros2_controllers.yaml` |
 | `demo.launch.py` | Sobe tudo: mock hardware + `move_group` + RViz com o plugin MotionPlanning |
 | `move_group.launch.py` | Só o `move_group`, para quando `mock.launch.py` (do `adam_urdf`) já está rodando |
-
-### `matrizes-de-movimento/`
-
-Matrizes de marcha na forma original/de origem (não passam pelo `colcon build`). As cópias
-realmente usadas em runtime estão em `ax12_control/ax12_control/*.yaml`. Ver
-[docs/arquitetura.md](../docs/arquitetura.md#marchas-arquivos-yaml).
 
 ## Comandos para rodar cada código
 

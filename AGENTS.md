@@ -46,8 +46,6 @@ Este repositório é um mini-workspace com 3 pacotes ROS lado a lado em `src/`:
   módulo Python `ax12_control/` (nós, matrizes de marcha `*.yaml` usadas em runtime).
 - `src/adam_urdf/` — pacote `ament_cmake` com URDF, meshes e launch files do robô Adam.
 - `src/adam_moveit_config/` — pacote MoveIt2 gerado (planning groups, SRDF, controllers).
-- `src/matrizes-de-movimento/` — matrizes de marcha originais/fonte (MATLAB), não instaladas
-  pelo build; as cópias usadas em runtime estão em `src/ax12_control/ax12_control/*.yaml`.
 - `docs/` — documentação: `install.md` (tutorial), `troubleshooting.md` (guia),
   `ref/` (referência), `adr.md` (explicação/diário de bordo). Documenta principalmente o
   pacote `ax12_control`; `adam_urdf`/`adam_moveit_config` ainda não têm docs próprias aqui.

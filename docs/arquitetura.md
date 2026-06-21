@@ -175,8 +175,6 @@ ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
 3. Recompile: `colcon build --packages-select ax12_control`.
 4. Use com `-p matriz:=<nome>`.
 
-> A pasta `src/matrizes-de-movimento/` guarda as mesmas matrizes como referência/origem, incluindo `otimizacao.h` — um header C de um protótipo antigo com 18 motores, não usado por este pacote.
-
 ---
 
 ## Visualização sem hardware (`visualizar_marcha.py`, `passo_slider.py`)

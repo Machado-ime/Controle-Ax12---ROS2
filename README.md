@@ -67,8 +67,7 @@ Controle-Ax12---ROS2/
 │   │       ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
 │   │       └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
 │   ├── adam_urdf/               # pacote ROS (ament_cmake): URDF, meshes e launch do Adam
-│   ├── adam_moveit_config/     # pacote MoveIt2 gerado p/ planejamento de movimento
-│   └── matrizes-de-movimento/  # origem/referência das marchas (não instalado no build)
+│   └── adam_moveit_config/     # pacote MoveIt2 gerado p/ planejamento de movimento
 └── docs/
     ├── install.md           # tutorial: instalação + primeira execução
     ├── troubleshooting.md   # guia: problemas conhecidos e soluções

@@ -6,6 +6,11 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Removido
+- `src/matrizes-de-movimento/`: `cin_inve.yaml`/`otimizada.yaml` eram cópias duplicadas das
+  marchas em `src/ax12_control/ax12_control/`; `otimizacao.h` (header C de protótipo de 18
+  motores) não tinha valor de referência. Não arquivados.
+
 ### Renomeado
 - Pacote `adam` renomeado para `adam_urdf` (pasta `src/adam_urdf/`, `package.xml`,
   `CMakeLists.txt`, todos os caminhos `package://adam/meshes/...` nos arquivos URDF/xacro, e

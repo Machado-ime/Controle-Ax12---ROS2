@@ -5,6 +5,16 @@ Append-only: não reescreva relatos antigos; corrija com um relato novo e datado
 
 ---
 
+## 2026-06-21 — Claude (a pedido de Fernando) — Remove src/matrizes-de-movimento/ (duplicado)
+`[decisão]`
+O Fernando tinha apagado `src/matrizes-de-movimento/` de propósito (não foi um acidente como
+eu tinha assumido num relato anterior) — `cin_inve.yaml` e `otimizada.yaml` ali eram cópias
+duplicadas do que já existe em `src/ax12_control/ax12_control/*.yaml`. `otimizacao.h` (header
+C de um protótipo de 18 motores, sem cópia em nenhum outro lugar) foi removido junto, mesma
+lógica já aplicada a `legacy/` e aos protótipos `AX12Controller_v1.py`/`v2.py`: sem valor de
+referência, não arquivar. Atualizados os organogramas/tabelas em `README.md`, `AGENTS.md`,
+`src/README.md` e `docs/arquitetura.md` que ainda citavam a pasta.
+
 ## 2026-06-21 — Claude (a pedido de Fernando) — Corrige build apos reorganizacao manual
 `[problema]`
 Depois do merge dos PRs #2 e #3, o Fernando continuou a consolidação manualmente direto na
