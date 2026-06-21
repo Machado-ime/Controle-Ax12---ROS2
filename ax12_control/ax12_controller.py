@@ -20,7 +20,8 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory
 
-import serial # pyserial: usado apenas para reconhecer a exceção lançada quando a USB cai
+# pyserial: usado apenas para reconhecer a exceção lançada quando a USB cai
+import serial
 
 # Importações explícitas (em vez de "import *") para sabermos o que vem do SDK
 from dynamixel_sdk import (
@@ -40,9 +41,22 @@ PROTOCOL_VERSION        = 1.0
 ADDR_TORQUE_ENABLE      = 24   # 1 byte  (0 = desliga, 1 = liga)
 ADDR_GOAL_POSITION      = 30   # 2 bytes (0 a 1023 = 0° a 300°)
 ADDR_MOVING_SPEED       = 32   # 2 bytes (0 a 1023; 0 = velocidade MÁXIMA!)
+
+# Goal Position (30) e Moving Speed (32) são vizinhos na tabela de controle.
+# Escrevendo 4 bytes a partir do endereço 30, enviamos posição E velocidade
+# num único pacote SyncWrite: todos os motores partem juntos, já na
+# velocidade certa, sem precisar de uma escrita individual por motor.
 LEN_GOAL_POS_E_SPEED    = 4
+
+# --- Registradores de telemetria (leitura) ---
+# Bloco contíguo 36 a 43: posição(2) + velocidade(2) + carga(2) +
+# tensão(1) + temperatura(1) — lemos os 8 bytes numa ÚNICA transação.
 ADDR_PRESENT_POSITION   = 36
 LEN_BLOCO_TELEMETRIA    = 8
+
+# O AX-12 NÃO tem sensor de torque verdadeiro: o Present Load (end. 40)
+# é a estimativa interna do esforço, em % do torque máximo. Convertemos
+# para N·m usando o stall torque nominal (~1,5 N·m a 12 V) — aproximação.
 TORQUE_MAX_NM           = 1.5
 
 # =====================================================================
@@ -72,29 +86,45 @@ class AX12HardwareInterface(Node):
         self.velocidade_padrao = self.get_parameter('velocidade_padrao').value
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
 
-        # --- Mapa das juntas ---
+        # Mapa das juntas (nome ROS -> ID do motor no barramento).
+        # Nomes seguem a convenção do URDF (adam.urdf): {lado}_{movimento}_{segmento}_{N}.
+        # O sufixo N é o ID de projeto no URDF e NÃO o ID físico do motor no
+        # barramento (ex.: pd_picht_tornozelo_3 é o motor de ID 12).
+        # O ID que vale é sempre o número à direita.
         self.joint_map = {
-            'PD_tornozelo_pitch_1': 12,
-            'PE_tornozelo_pitch_2': 17,
-            'PD_tornozelo_roll_3': 13,  
-            'PE_tornozelo_roll_4': 18,   
-            'PD_joelho_pitch_5': 11,
-            'PE_joelho_pitch_6': 16,
-            'PD_quadril_pitch_7': 10,
-            'PE_quadril_pitch_8': 15,
+            'pd_picht_tornozelo_3': 12,
+            'pe_picht_tornozelo_4': 17,
+            'pd_roll_tornozelo_1': 13,   # ativos, mas fora da marcha atual:
+            'pe_roll_tornozelo_2': 18,   # recebem torque e seguram a posição
+            'pd_picht_joelho_5': 11,
+            'pe_picht_joelho_6': 16,
+            'pd_picht_quadril_7': 10,
+            'pe_pich_quadril_8': 15,
+            'pd_roll_quadril_9': 9,      # quadril roll: novo, sem medição ainda
+            'pe_roll_quadril_10': 14,    # (fora da marcha; segura posição)
+            # Juntas ainda sem ID no barramento atual (braços, pescoço):
+            # adicione aqui quando forem ligadas — cuidado para NÃO repetir
+            # um ID já usado acima (ID duplicado = dois nomes comandando o
+            # mesmo motor físico).
         }
         self.active_ids = list(self.joint_map.values())
 
-        # --- Limites das junta ---
+        # Limites de posição por junta (rad) medidos no hardware e convertidos via:
+        #   rad = (grau_AX12 - 150) * pi/180
+        # onde grau_AX12 é a posição na escala 0-300° do AX-12.
+        # PD (direito) e PE (esquerdo) são espelhados: os limites de PE são
+        # (lo, hi) direto da medição; PD recebe (-hi, -lo) para refletir a montagem.
         self.joint_limits = {
-            'PD_tornozelo_pitch_1': (-LIMITE_RAD, LIMITE_RAD),
-            'PE_tornozelo_pitch_2': (-LIMITE_RAD, LIMITE_RAD),
-            'PD_tornozelo_roll_3':  (-LIMITE_RAD, LIMITE_RAD),
-            'PE_tornozelo_roll_4':  (-LIMITE_RAD, LIMITE_RAD),
-            'PD_joelho_pitch_5':    (0.0,         LIMITE_RAD),   # joelho só dobra numa direção
-            'PE_joelho_pitch_6':    (-LIMITE_RAD, 0.0),
-            'PD_quadril_pitch_7':   (-LIMITE_RAD, LIMITE_RAD),
-            'PE_quadril_pitch_8':   (-LIMITE_RAD, LIMITE_RAD),
+            'pd_picht_tornozelo_3': (-1.4661,     0.5585),  # espelho de PE
+            'pe_picht_tornozelo_4': (-0.5585,     1.4661),  # (118°,234°) → (-32°,+84°)
+            'pd_roll_tornozelo_1':  (-0.8727,     0.5934),  # espelho de PE
+            'pe_roll_tornozelo_2':  (-0.5934,     0.8727),  # (116°,200°) → (-34°,+50°)
+            'pd_picht_joelho_5':    (0.0,         LIMITE_RAD),  # (150°,300°) → (0°,+150°)
+            'pe_picht_joelho_6':    (-LIMITE_RAD, 0.0),         # espelho de PD
+            'pd_picht_quadril_7':   (-LIMITE_RAD, LIMITE_RAD),  # sem medição ainda
+            'pe_pich_quadril_8':    (-LIMITE_RAD, LIMITE_RAD),
+            'pd_roll_quadril_9':    (-LIMITE_RAD, LIMITE_RAD),  # sem medição ainda
+            'pe_roll_quadril_10':   (-LIMITE_RAD, LIMITE_RAD),
         }
 
         # --- Estado da conexão serial ---
