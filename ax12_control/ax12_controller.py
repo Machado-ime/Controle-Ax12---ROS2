@@ -20,8 +20,7 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory
 
-# pyserial: usado apenas para reconhecer a exceção lançada quando a USB cai
-import serial
+import serial # pyserial: usado apenas para reconhecer a exceção lançada quando a USB cai
 
 # Importações explícitas (em vez de "import *") para sabermos o que vem do SDK
 from dynamixel_sdk import (
@@ -41,22 +40,9 @@ PROTOCOL_VERSION        = 1.0
 ADDR_TORQUE_ENABLE      = 24   # 1 byte  (0 = desliga, 1 = liga)
 ADDR_GOAL_POSITION      = 30   # 2 bytes (0 a 1023 = 0° a 300°)
 ADDR_MOVING_SPEED       = 32   # 2 bytes (0 a 1023; 0 = velocidade MÁXIMA!)
-
-# Goal Position (30) e Moving Speed (32) são vizinhos na tabela de controle.
-# Escrevendo 4 bytes a partir do endereço 30, enviamos posição E velocidade
-# num único pacote SyncWrite: todos os motores partem juntos, já na
-# velocidade certa, sem precisar de uma escrita individual por motor.
 LEN_GOAL_POS_E_SPEED    = 4
-
-# --- Registradores de telemetria (leitura) ---
-# Bloco contíguo 36 a 43: posição(2) + velocidade(2) + carga(2) +
-# tensão(1) + temperatura(1) — lemos os 8 bytes numa ÚNICA transação.
 ADDR_PRESENT_POSITION   = 36
 LEN_BLOCO_TELEMETRIA    = 8
-
-# O AX-12 NÃO tem sensor de torque verdadeiro: o Present Load (end. 40)
-# é a estimativa interna do esforço, em % do torque máximo. Convertemos
-# para N·m usando o stall torque nominal (~1,5 N·m a 12 V) — aproximação.
 TORQUE_MAX_NM           = 1.5
 
 # =====================================================================
@@ -86,29 +72,20 @@ class AX12HardwareInterface(Node):
         self.velocidade_padrao = self.get_parameter('velocidade_padrao').value
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
 
-        # Mapa das juntas (nome ROS -> ID do motor no barramento)
-        # Convenção: {lado}_{segmento}_{movimento}_{N} onde N é sequencial 1-8.
-        # O ID que vale é sempre o número à direita; NÃO confundir com o sufixo N.
+        # --- Mapa das juntas ---
         self.joint_map = {
             'PD_tornozelo_pitch_1': 12,
             'PE_tornozelo_pitch_2': 17,
-            'PD_tornozelo_roll_3': 13,   # ativos, mas fora da marcha atual:
-            'PE_tornozelo_roll_4': 18,   # recebem torque e seguram a posição
+            'PD_tornozelo_roll_3': 13,  
+            'PE_tornozelo_roll_4': 18,   
             'PD_joelho_pitch_5': 11,
             'PE_joelho_pitch_6': 16,
             'PD_quadril_pitch_7': 10,
             'PE_quadril_pitch_8': 15,
-            # Juntas ainda sem ID no barramento atual (quadril roll, braços,
-            # pescoço): adicione aqui quando forem ligadas — cuidado para
-            # NÃO repetir um ID já usado acima (ID duplicado = dois nomes
-            # comandando o mesmo motor físico).
         }
         self.active_ids = list(self.joint_map.values())
 
-        # Limites de posição por junta (rad) — devem espelhar o URDF (adam.urdf).
-        # O controlador clampeia silenciosamente ao limite e avisa em /hardware_errors.
-        # Padrão = limite físico do AX-12 (±150° = ±2,618 rad).
-        # Ajuste os valores conforme o alcance real de cada segmento do robô.
+        # --- Limites das junta ---
         self.joint_limits = {
             'PD_tornozelo_pitch_1': (-LIMITE_RAD, LIMITE_RAD),
             'PE_tornozelo_pitch_2': (-LIMITE_RAD, LIMITE_RAD),
