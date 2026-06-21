@@ -71,16 +71,18 @@ Os nomes seguem a convenção do URDF (`adam.urdf`): `{lado}_{movimento}_{segmen
 
 | Junta | ID no barramento |
 |---|---|
-| `pd_picht_tornozelo_3` | 18 |
-| `pe_picht_tornozelo_4` | 13 |
-| `pd_roll_tornozelo_1`  | 17 |
-| `pe_roll_tornozelo_2`  | 12 |
-| `pd_picht_joelho_5`    | 16 |
-| `pe_picht_joelho_6`    | 11 |
-| `pd_picht_quadril_7`   | 15 |
-| `pe_pich_quadril_8`    | 10 |
+| `pd_picht_tornozelo_3` | 12 |
+| `pe_picht_tornozelo_4` | 17 |
+| `pd_roll_tornozelo_1`  | 13 |
+| `pe_roll_tornozelo_2`  | 18 |
+| `pd_picht_joelho_5`    | 11 |
+| `pe_picht_joelho_6`    | 16 |
+| `pd_picht_quadril_7`   | 10 |
+| `pe_pich_quadril_8`    | 15 |
+| `pd_roll_quadril_9`    | 9  |
+| `pe_roll_quadril_10`   | 14 |
 
-Para ativar uma junta nova (quadril roll, braços): adicione ao `joint_map` em `ax12_controller.py` sem repetir ID. Se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do YAML, na mesma posição.
+Para ativar uma junta nova (braços, pescoço): adicione ao `joint_map` em `ax12_controller.py` sem repetir ID. Se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do YAML, na mesma posição.
 
 ### Tolerância a falhas
 
@@ -173,7 +175,34 @@ ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
 3. Recompile: `colcon build --packages-select ax12_control`.
 4. Use com `-p matriz:=<nome>`.
 
-> A pasta `matrizes de movimento/` na raiz guarda as mesmas matrizes como referência/origem, incluindo `otimização.h` — um header C de um protótipo antigo com 18 motores, não usado por este pacote.
+> A pasta `matrizes-de-movimento/` na raiz guarda as mesmas matrizes como referência/origem, incluindo `otimizacao.h` — um header C de um protótipo antigo com 18 motores, não usado por este pacote.
+
+---
+
+## Visualização sem hardware (`visualizar_marcha.py`, `passo_slider.py`)
+
+Para ver a marcha no RViz sem Raspberry Pi nem motores ligados:
+
+```bash
+ros2 launch ax12_control visualizar_marcha.launch.py matriz:=otimizada
+```
+
+Sobe três nós:
+
+| Nó | Função |
+|---|---|
+| `robot_state_publisher` | TF a partir do URDF do pacote `adam` (lido automaticamente — não precisa passar `urdf:=`). |
+| `visualizar_marcha` | Publica `/joint_states` direto do YAML da marcha, sem `ros2_control`. Juntas do URDF ausentes na matriz são publicadas em 0 rad. |
+| `passo_slider` | Janela Qt com slider + botões ◀▶ que publica o índice da etapa em `/passo_marcha`. |
+
+### Modos do `visualizar_marcha`
+
+- **Manual** (`passo_s:=0.0`, padrão) — espera mensagens `Int32` em `/passo_marcha` (é o que o `passo_slider` envia). Também aceita comando direto, sem o slider: `ros2 topic pub --once /passo_marcha std_msgs/msg/Int32 "data: N"`.
+- **Automático** (ex.: `passo_s:=0.5`) — timer avança a etapa sozinho a cada N segundos.
+
+### `gait_bridge.py` — ponte para o `ros2_control` (Caso 2: MoveIt2/mock)
+
+Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s do pacote `adam` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). Sem o bridge os dois lados nunca se conectam, mesmo com os nomes de junta certos, porque o QoS é incompatível.
 
 ---
 
@@ -187,4 +216,4 @@ ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
 | Leitura | `readTxRx` em 8 bytes por motor (endereços 36–43: posição, velocidade, carga, tensão, temperatura) |
 | Conversão de posição | `goal = (rad + 2,618) × 1023 / 5,236` — faixa ±150° = ±2,618 rad |
 | Conversão de velocidade | `vel = \|rad/s\| × 86,03` — mínimo 1 (0 = velocidade máxima no AX-12) |
-| Taxa de telemetria | 5 Hz por padrão; 8 motores × 5 Hz = 40 transações/s (confortável a 1 Mbps) |
+| Taxa de telemetria | 5 Hz por padrão; 10 motores × 5 Hz = 50 transações/s (confortável a 1 Mbps) |

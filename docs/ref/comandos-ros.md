@@ -1,4 +1,4 @@
-Esses cótigos são utilitários ros úteis para identificar problemas e estudar programas
+Esses códigos são utilitários ROS úteis para identificar problemas e estudar programas.
 
 # Códigos úteis
 

@@ -15,6 +15,14 @@
   <exec_depend>dynamixel_sdk</exec_depend>
   <exec_depend>python3-pyserial</exec_depend>
   <exec_depend>python3-yaml</exec_depend>
+  <!-- visualizar_marcha.launch.py -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
+  <exec_depend>robot_state_publisher</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+  <!-- passo_slider.py -->
+  <exec_depend>python_qt_binding</exec_depend>
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
