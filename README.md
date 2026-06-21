@@ -116,6 +116,7 @@ Lista completa de referências (hardware, ros2_control, MoveIt2, projetos de rob
 - [docs/arquitetura.md](docs/arquitetura.md) — como o sistema funciona por dentro
 - [docs/adr.md](docs/adr.md) — diário de bordo (decisões, testes, aprendizados)
 - [docs/ref/](docs/ref/) — referências externas e cola de comandos ROS 2
+- [src/README.md](src/README.md) — organograma e comandos dos 3 pacotes ROS
 - [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) — como contribuir
 - [AGENTS.md](AGENTS.md) — instruções para agentes de IA
 
