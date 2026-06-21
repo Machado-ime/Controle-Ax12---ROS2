@@ -139,7 +139,7 @@ Para gráficos ao longo do tempo: **PlotJuggler** (`ros2 run plotjuggler plotjug
 
 ## Marchas (arquivos `.yaml`)
 
-Cada arquivo descreve um ciclo completo. Mora em `ax12_control/` e é instalado junto com o pacote (`package_data` em `setup.py`). Formato:
+Cada arquivo descreve um ciclo completo. Mora em `src/ax12_control/ax12_control/` e é instalado junto com o pacote (`package_data` em `setup.py`). Formato:
 
 ```yaml
 passo: 1.0      # duração de cada transição (segundos)
@@ -170,12 +170,12 @@ ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
 
 ### Criar uma marcha nova
 
-1. Copie um `.yaml` existente para `ax12_control/<nome>.yaml`.
+1. Copie um `.yaml` existente para `src/ax12_control/ax12_control/<nome>.yaml`.
 2. Ajuste `nomes_juntas`, `matriz_movimento`, `passo` e `pausa`.
 3. Recompile: `colcon build --packages-select ax12_control`.
 4. Use com `-p matriz:=<nome>`.
 
-> A pasta `matrizes-de-movimento/` na raiz guarda as mesmas matrizes como referência/origem, incluindo `otimizacao.h` — um header C de um protótipo antigo com 18 motores, não usado por este pacote.
+> A pasta `src/matrizes-de-movimento/` guarda as mesmas matrizes como referência/origem, incluindo `otimizacao.h` — um header C de um protótipo antigo com 18 motores, não usado por este pacote.
 
 ---
 

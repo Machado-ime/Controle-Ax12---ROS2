@@ -10,6 +10,10 @@ dentro.
 
 ## Como buildar e rodar
 
+Todo o código fica em `src/ax12_control/` (layout `<repo>/src/<pacote>/`, como um workspace
+ROS comum). Buildar a partir da raiz do repositório funciona normalmente — o `colcon`
+encontra o `package.xml` recursivamente, não importa a profundidade:
+
 ```bash
 colcon build --packages-select ax12_control
 source install/setup.bash
@@ -31,25 +35,25 @@ Não há suíte de testes própria além dos checks padrão do `ament` (`ament_f
 - Nomes de arquivo: minúsculas, hífen, sem acento nem espaço.
 - Nomes de junta seguem o URDF do pacote `adam`: `{lado}_{movimento}_{segmento}_{N}` (ex.:
   `pd_picht_tornozelo_3`). O `N` é o ID de projeto no URDF, **não** é o ID físico do motor no
-  barramento — os IDs reais vivem em `joint_map` (`ax12_control/ax12_controller.py`).
+  barramento — os IDs reais vivem em `joint_map`
+  (`src/ax12_control/ax12_control/ax12_controller.py`).
 
 ## Mapa do repositório
 
-- `ax12_control/` — nós ROS (controlador de hardware, gerador de marcha, monitor, visualizador
-  RViz, ponte para `ros2_control`) e as matrizes de marcha (`*.yaml`) usadas em runtime.
-- `launch/` — launch files.
+- `src/ax12_control/` — o pacote ROS inteiro: `package.xml`, `setup.py`, `launch/` e o módulo
+  Python `ax12_control/` (nós, matrizes de marcha `*.yaml` usadas em runtime).
+- `src/legacy/` — versões antigas, mantidas só como referência histórica. Não usar nem editar.
+- `src/matrizes-de-movimento/` — matrizes de marcha originais/fonte (MATLAB), não instaladas
+  pelo build; as cópias usadas em runtime estão em `src/ax12_control/ax12_control/*.yaml`.
 - `docs/` — documentação: `install.md` (tutorial), `troubleshooting.md` (guia),
   `ref/` (referência), `adr.md` (explicação/diário de bordo).
-- `legacy/` — versões antigas, mantidas só como referência histórica. Não usar nem editar.
-- `matrizes-de-movimento/` — matrizes de marcha originais/fonte (MATLAB), não instaladas pelo
-  build; as cópias usadas em runtime estão em `ax12_control/*.yaml`.
 
 ## Regras importantes
 
 - O pacote `adam` (URDF, meshes, `ros2_control`) mora em outro workspace/repositório — não
   existe dentro deste repo. Não invente caminhos para ele.
-- `package.xml` e `setup.py` declaram as dependências reais — ao adicionar um nó/launch novo
-  que importa um pacote ROS, declare a dependência ali também.
+- `package.xml` e `setup.py` (em `src/ax12_control/`) declaram as dependências reais — ao
+  adicionar um nó/launch novo que importa um pacote ROS, declare a dependência ali também.
 - Atualize o README e o `CHANGELOG.md` no mesmo PR que muda comportamento visível.
 - Aconteceu algo relevante (decisão, problema, teste)? Registre em [docs/adr.md](docs/adr.md).
 - Resolveu um problema? Registre em [docs/troubleshooting.md](docs/troubleshooting.md), com a
