@@ -146,3 +146,24 @@ ros2 launch adam_urdf mock.launch.py                            # digital twin: 
 ros2 launch adam_moveit_config demo.launch.py        # digital twin completo + MoveIt2
 ros2 launch adam_moveit_config move_group.launch.py  # só o move_group (mock.launch.py já rodando)
 ```
+
+## Clonar só o essencial numa Raspberry Pi
+
+A Pi só roda o `ax12_controller` — não precisa de `adam_urdf` (meshes/RViz) nem de
+`adam_moveit_config` (planejamento). Clone só `src/ax12_control` com sparse-checkout:
+
+```bash
+git clone --filter=blob:none --no-checkout --depth 1 \
+  https://github.com/Machado-ime/Controle-Ax12---ROS2.git
+cd Controle-Ax12---ROS2
+git sparse-checkout init --cone
+git sparse-checkout set src/ax12_control
+git checkout main
+```
+
+Para atualizar depois, é só `git pull` — continua respeitando o sparse-checkout automaticamente:
+
+```bash
+cd Controle-Ax12---ROS2
+git pull
+```
