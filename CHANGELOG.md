@@ -6,6 +6,14 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Renomeado
+- Pacote `adam` renomeado para `adam_urdf` (pasta `src/adam_urdf/`, `package.xml`,
+  `CMakeLists.txt`, todos os caminhos `package://adam/meshes/...` nos arquivos URDF/xacro, e
+  todas as chamadas `get_package_share_directory`/`FindPackageShare` que o referenciavam).
+  Evita ambiguidade com o nome "Adam" do robô. Não afeta `adam_moveit_config`, que continua
+  usando `MoveItConfigsBuilder("adam", ...)` — esse "adam" é o nome do robô/SRDF
+  (`adam.srdf`), não o pacote URDF.
+
 ### Adicionado
 - Suporte a 10 motores: rolls de quadril (`pd_roll_quadril_9`, ID 9 e `pe_roll_quadril_10`,
   ID 14), além dos 8 já existentes.
@@ -25,7 +33,7 @@ arquivo: ver `git log`.
   e o módulo Python) agora vive em `src/ax12_control/`. O `colcon` encontra o pacote
   recursivamente, então o comando de build não muda.
 - `adam/` e `adam_moveit_config/` (que viviam na raiz do repositório) movidos para
-  `src/adam/` e `src/adam_moveit_config/`, junto do `ax12_control` — o repositório agora é um
+  `src/adam_urdf/` e `src/adam_moveit_config/`, junto do `ax12_control` — o repositório agora é um
   mini-workspace com os 3 pacotes lado a lado em `src/`.
 
 ### Removido
@@ -36,7 +44,7 @@ arquivo: ver `git log`.
 - `ax12_controller.py`: `joint_map`/`joint_limits` estavam com nomes de junta no padrão antigo
   (pré-URDF), o que descartava silenciosamente todos os comandos de marcha — revertido para o
   padrão de nomes do URDF, que é o que `send_gait` realmente publica.
-- `display.launch.py` (pacote `adam`): `joint_state_publisher_gui` agora é condicional
+- `display.launch.py` (pacote `adam_urdf`): `joint_state_publisher_gui` agora é condicional
   (`use_gui_sliders`), evitando conflito com o `/joint_states` real ao espelhar o robô.
 - Build quebrado: um achatamento manual de `src/ax12_control/ax12_control/*` para `src/*`
   tirou a pasta que o `setup.py` espera para o módulo Python — `colcon build` falhava com

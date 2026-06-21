@@ -5,7 +5,7 @@ Sobe o controller_manager com o mock_components/GenericSystem, o
 robot_state_publisher, os spawners dos controllers e o RViz. Sem MoveIt
 ainda (isso vem na Fase 2/3); aqui se valida o pipeline ros2_control.
 
-    ros2 launch adam mock.launch.py
+    ros2 launch adam_urdf mock.launch.py
 
 Para comandar uma junta (exemplo, perna direita):
     ros2 topic pub -1 /perna_direita_controller/joint_trajectory \\
@@ -31,15 +31,15 @@ def generate_launch_description():
         'robot_description': Command([
             FindExecutable(name='xacro'), ' ',
             PathJoinSubstitution(
-                [FindPackageShare('adam'), 'urdf', 'adam.urdf.xacro']),
+                [FindPackageShare('adam_urdf'), 'urdf', 'adam.urdf.xacro']),
             ' use_mock_hardware:=', use_mock,
         ])
     }
 
     controllers = PathJoinSubstitution(
-        [FindPackageShare('adam'), 'config', 'ros2_controllers.yaml'])
+        [FindPackageShare('adam_urdf'), 'config', 'ros2_controllers.yaml'])
     rviz_config = PathJoinSubstitution(
-        [FindPackageShare('adam'), 'config', 'adam.rviz'])
+        [FindPackageShare('adam_urdf'), 'config', 'adam.rviz'])
 
     control_node = Node(
         package='controller_manager',

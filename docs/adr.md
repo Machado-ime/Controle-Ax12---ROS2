@@ -20,7 +20,7 @@ mas são a convenção do `ament_python` — o pacote (`package.xml`+`setup.py`)
 importável (mesmo nome) são coisas diferentes e não podem ser achatados num só nível.
 
 **Solução:** restaurada a estrutura `src/ax12_control/{package.xml,setup.py,launch/,
-ax12_control/{módulo}}`, irmã de `src/adam/` e `src/adam_moveit_config/` (que já estavam
+ax12_control/{módulo}}`, irmã de `src/adam_urdf/` e `src/adam_moveit_config/` (que já estavam
 corretos, cada um na própria pasta). A pedido do Fernando, `legacy/` ficou removido (não
 restaurado) e os protótipos `AX12Controller_v1.py`/`v2.py` também foram apagados — sem valor
 de referência. Validado com `colcon build --packages-select ax12_control adam

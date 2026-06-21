@@ -23,7 +23,7 @@ from moveit_configs_utils import MoveItConfigsBuilder
 
 
 def generate_launch_description():
-    adam_pkg = get_package_share_directory("adam")
+    adam_pkg = get_package_share_directory("adam_urdf")
     moveit_pkg = get_package_share_directory("adam_moveit_config")
 
     use_mock = LaunchConfiguration("use_mock_hardware")
