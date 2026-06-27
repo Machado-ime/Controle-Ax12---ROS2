@@ -6,6 +6,14 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Adicionado
+- `controle_manual.py` + `controle_manual.launch.py` — janela Qt com um slider por
+  junta para jog manual dos motores AX-12 reais. Publica só `/joint_trajectory`; o
+  RViz acompanha via a telemetria real já publicada pelo `ax12_controller`,
+  evitando dois publishers competindo em `/joint_states`. Pensado para rodar tudo
+  numa máquina só (a Raspberry Pi), substituindo o fluxo PC+Pi via rede para testes
+  manuais de junta a junta.
+
 ### Removido
 - `src/matrizes-de-movimento/`: `cin_inve.yaml`/`otimizada.yaml` eram cópias duplicadas das
   marchas em `src/ax12_control/ax12_control/`; `otimizacao.h` (header C de protótipo de 18

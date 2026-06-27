@@ -5,6 +5,26 @@ Append-only: não reescreva relatos antigos; corrija com um relato novo e datado
 
 ---
 
+## 2026-06-27 — Claude (a pedido de Fernando) — Jog manual local (controle_manual.py)
+`[decisão]`
+Estávamos depurando descoberta DDS entre uma Raspberry Pi e um PC (Wi-Fi, ROS_DOMAIN_ID
+batendo, mas `ros2 node list` do PC não via o nó da Pi — suspeita de NAT do WSL2 do lado do
+PC). O Fernando decidiu mudar de estratégia: em vez de depender da rede PC↔Pi para testar
+junta a junta, trabalhar direto na Raspberry Pi com um controle manual local. Criamos
+`controle_manual.py` (slider Qt por junta) + `controle_manual.launch.py`
+(`robot_state_publisher` + `ax12_controller` real + RViz + o slider, tudo num só `ros2
+launch`).
+
+**Decisão de design:** o slider publica SÓ `/joint_trajectory` (o mesmo tópico que o
+`ax12_controller` já assina), nunca `/joint_states` direto. Publicar `/joint_states` pelo
+slider também pareceria mais "instantâneo", mas criaria dois publishers do tópico (o slider
+com a posição alvo e o `ax12_controller` com a posição real da telemetria) brigando e fazendo
+o RViz tremer entre os dois valores. Deixando o RViz espelhar só a telemetria real (mesmo
+mecanismo do `display.launch.py use_gui_sliders:=false`), o slider "manda pro motor e pro RViz
+ao mesmo tempo" sem essa briga — o RViz só mostra a posição assim que o motor de fato chega
+lá. Limites de cada slider copiados de `ax12_controller.joint_limits` (mesma fonte, mantidos
+em sincronia manualmente).
+
 ## 2026-06-21 — Claude (a pedido de Fernando) — Remove src/matrizes-de-movimento/ (duplicado)
 `[decisão]`
 O Fernando tinha apagado `src/matrizes-de-movimento/` de propósito (não foi um acidente como

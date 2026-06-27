@@ -202,6 +202,12 @@ Sobe três nós:
 
 Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s do pacote `adam_urdf` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). Sem o bridge os dois lados nunca se conectam, mesmo com os nomes de junta certos, porque o QoS é incompatível.
 
+### `controle_manual.py` — jog manual com hardware real (`controle_manual.launch.py`)
+
+Janela Qt com um slider por junta para mover os motores reais manualmente enquanto o RViz acompanha. Pensado para rodar tudo numa máquina só (a Raspberry Pi), em vez do par PC+Pi via rede.
+
+**Decisão de design — por que o slider NÃO publica `/joint_states` direto:** a tentação óbvia seria a janela publicar a posição alvo em `/joint_states` (RViz atualiza instantâneo) e também em `/joint_trajectory` (motor real recebe o comando). Isso criaria DOIS publishers de `/joint_states` ao mesmo tempo — o slider (posição alvo, instantânea) e o `ax12_controller` (posição real, da telemetria) — competindo e fazendo o RViz "tremer" entre os dois valores. Em vez disso, o slider publica **só** `/joint_trajectory`; o RViz mostra a posição **real**, que já vem de `/joint_states` publicado pelo `ax12_controller` a partir da telemetria do motor (mesmo mecanismo do `display.launch.py use_gui_sliders:=false`). O efeito prático é o mesmo ("mexer no slider move o motor e atualiza o RViz"), só que o RViz reflete o que o motor realmente atingiu, com o atraso natural do movimento físico + da leitura de telemetria (tipicamente abaixo de 1 s).
+
 ---
 
 ## Detalhes técnicos

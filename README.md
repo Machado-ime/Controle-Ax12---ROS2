@@ -55,13 +55,15 @@ Controle-Ax12---ROS2/
 │   │   ├── package.xml
 │   │   ├── setup.py
 │   │   ├── launch/
-│   │   │   └── visualizar_marcha.launch.py
+│   │   │   ├── visualizar_marcha.launch.py
+│   │   │   └── controle_manual.launch.py
 │   │   └── ax12_control/      # módulo Python (nome repetido = convenção ament_python)
 │   │       ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
 │   │       ├── send_gait.py         # gerador de marcha (PC de comando)
 │   │       ├── ax12_monitor.py      # painel de telemetria no terminal (PC)
 │   │       ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
 │   │       ├── passo_slider.py      # janela Qt p/ escolher a etapa da marcha manualmente
+│   │       ├── controle_manual.py   # janela Qt: jog manual dos motores reais + RViz junto
 │   │       ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2, MoveIt)
 │   │       ├── adam.rviz            # config RViz pré-configurado para o Adam
 │   │       ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
@@ -89,6 +91,7 @@ Controle-Ax12---ROS2/
 | `send_gait` | PC de comando | Lê a marcha de um `.yaml` e publica `/joint_trajectory` |
 | `ax12_monitor` | PC de comando | Painel de telemetria ao vivo no terminal |
 | `visualizar_marcha` + `passo_slider` | PC de comando | Digital twin no RViz sem hardware |
+| `controle_manual` | Raspberry Pi | Jog manual por slider — move o motor real e o RViz ao mesmo tempo (RViz via telemetria real do `ax12_controller`) |
 | `gait_bridge` | PC de comando | Ponte para `ros2_control`/MoveIt2 (pacotes `adam_urdf`/`adam_moveit_config`, em `src/`) |
 
 | Tópico | Tipo | QoS |

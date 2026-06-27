@@ -11,7 +11,10 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name, ['ax12_control/adam.rviz']),
-        ('share/' + package_name + '/launch', ['launch/visualizar_marcha.launch.py']),
+        ('share/' + package_name + '/launch', [
+            'launch/visualizar_marcha.launch.py',
+            'launch/controle_manual.launch.py',
+        ]),
     ],
     # Faz o(s) YAML(s) de marcha viajarem junto com o módulo na instalação,
     # para que o caminho padrão (otimizada.yaml ao lado do send_gait) seja
@@ -35,6 +38,7 @@ setup(
             'visualizar_marcha = ax12_control.visualizar_marcha:main',
             'gait_bridge = ax12_control.gait_bridge:main',
             'passo_slider = ax12_control.passo_slider:main',
+            'controle_manual = ax12_control.controle_manual:main',
         ],
     },
 )

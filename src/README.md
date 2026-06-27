@@ -14,7 +14,8 @@ src/
 │   ├── resource/
 │   │   └── ax12_control
 │   ├── launch/
-│   │   └── visualizar_marcha.launch.py
+│   │   ├── visualizar_marcha.launch.py
+│   │   └── controle_manual.launch.py
 │   └── ax12_control/             # módulo Python (mesmo nome = convenção ament_python)
 │       ├── __init__.py
 │       ├── ax12_controller.py
@@ -22,6 +23,7 @@ src/
 │       ├── ax12_monitor.py
 │       ├── visualizar_marcha.py
 │       ├── passo_slider.py
+│       ├── controle_manual.py
 │       ├── gait_bridge.py
 │       ├── adam.rviz
 │       ├── otimizada.yaml
@@ -75,6 +77,7 @@ marcha mora aqui. Documentação aprofundada: [docs/arquitetura.md](../docs/arqu
 | `ax12_monitor.py` | Painel de telemetria ao vivo no terminal (ângulo, torque, tensão, temperatura) |
 | `visualizar_marcha.py` | Publica `/joint_states` direto do YAML, sem `ros2_control` — visualização sem hardware |
 | `passo_slider.py` | Janela Qt com slider/botões para escolher manualmente a etapa da marcha no RViz |
+| `controle_manual.py` | Janela Qt com um slider por junta — jog manual dos motores reais via `/joint_trajectory`, com o RViz espelhando a posição real (telemetria do `ax12_controller`) |
 | `gait_bridge.py` | Ponte entre `send_gait` (QoS BEST_EFFORT) e os `JointTrajectoryController` do `adam_urdf`/MoveIt2 (QoS RELIABLE) |
 | `otimizada.yaml`, `cin_inve.yaml` | As duas marchas prontas (6 e 8 juntas, respectivamente) |
 | `adam.rviz` | Config do RViz usada por `visualizar_marcha.launch.py` |
@@ -132,6 +135,13 @@ ros2 run ax12_control gait_bridge       # PC de comando — ponte para ros2_cont
 ros2 launch ax12_control visualizar_marcha.launch.py matriz:=cin_inve   # ou otimizada
 ```
 
+**`ax12_control` — launch (jog manual com hardware real + RViz, tudo numa máquina só):**
+
+```bash
+ros2 launch ax12_control controle_manual.launch.py
+ros2 launch ax12_control controle_manual.launch.py device:=/dev/ttyUSB0 velocidade:=0.5
+```
+
 **`adam_urdf` — launch:**
 
 ```bash
@@ -150,9 +160,13 @@ ros2 launch adam_moveit_config move_group.launch.py  # só o move_group (mock.la
 ## Clonar só o essencial numa Raspberry Pi
 
 A Pi só roda o `ax12_controller` — não precisa de `adam_urdf` (meshes/RViz) nem de
-`adam_moveit_config` (planejamento). Clone só `src/ax12_control` com sparse-checkout:
+`adam_moveit_config` (planejamento). Clone só `src/ax12_control` com sparse-checkout, **dentro
+do `src/` do seu workspace** (mesma regra de qualquer pacote ROS — é o que faz o `colcon
+build`, rodado da raiz do workspace, encontrar o pacote):
 
 ```bash
+mkdir -p ~/ax12_control_ws/src
+cd ~/ax12_control_ws/src
 git clone --filter=blob:none --no-checkout --depth 1 \
   https://github.com/Machado-ime/Controle-Ax12---ROS2.git
 cd Controle-Ax12---ROS2
@@ -161,9 +175,17 @@ git sparse-checkout set src/ax12_control
 git checkout main
 ```
 
-Para atualizar depois, é só `git pull` — continua respeitando o sparse-checkout automaticamente:
+Para atualizar depois, é só `git pull` de dentro da pasta clonada — continua respeitando o
+sparse-checkout automaticamente:
 
 ```bash
-cd Controle-Ax12---ROS2
+cd ~/ax12_control_ws/src/Controle-Ax12---ROS2
 git pull
+```
+
+E o build é sempre a partir da raiz do workspace, não da pasta clonada:
+
+```bash
+cd ~/ax12_control_ws
+colcon build --packages-select ax12_control
 ```
