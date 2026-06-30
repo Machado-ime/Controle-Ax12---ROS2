@@ -15,21 +15,23 @@ Uso (com ax12_controller já rodando, motores ligados):
     ros2 launch ax12_control controle_manual.launch.py
 """
 
+import signal
 import sys
 import threading
 
 import rclpy
+from rclpy.executors import ExternalShutdownException, ShutdownException
 from rclpy.node import Node
 from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 try:
-    from python_qt_binding.QtCore import Qt
+    from python_qt_binding.QtCore import Qt, QTimer
     from python_qt_binding.QtWidgets import (
         QApplication, QLabel, QSlider, QVBoxLayout, QWidget,
     )
 except ImportError:
-    from PyQt5.QtCore import Qt
+    from PyQt5.QtCore import Qt, QTimer
     from PyQt5.QtWidgets import (
         QApplication, QLabel, QSlider, QVBoxLayout, QWidget,
     )
@@ -115,6 +117,13 @@ class JanelaSliders(QWidget):
         self._node.mover(junta, rad)
 
 
+def _spin(node: ControleManual) -> None:
+    try:
+        rclpy.spin(node)
+    except (ExternalShutdownException, ShutdownException):
+        pass  # ros2 launch pediu pra encerrar — não é erro
+
+
 def main(args=None) -> None:
     rclpy.init(args=args)
     node = ControleManual()
@@ -123,7 +132,16 @@ def main(args=None) -> None:
     win = JanelaSliders(node)
     win.show()
 
-    spin_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
+    # O loop de eventos do Qt (em C++) bloqueia o Python de processar
+    # SIGINT — sem isso, Ctrl+C (ou o SIGINT do "ros2 launch") trava até o
+    # launch escalar pra SIGKILL. O timer força o interpretador a acordar
+    # periodicamente, dando chance do handler padrão do Python pegar o sinal.
+    signal.signal(signal.SIGINT, signal.SIG_DFL)
+    keep_alive = QTimer()
+    keep_alive.timeout.connect(lambda: None)
+    keep_alive.start(200)
+
+    spin_thread = threading.Thread(target=_spin, args=(node,), daemon=True)
     spin_thread.start()
 
     try:
