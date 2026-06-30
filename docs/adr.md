@@ -5,6 +5,32 @@ Append-only: não reescreva relatos antigos; corrija com um relato novo e datado
 
 ---
 
+## 2026-06-30 — Claude (a pedido de Fernando) — Simplifica instalação: clone = workspace
+`[decisão]`
+Depurando o `controle_manual.launch.py` em duas máquinas (Pi e PC/WSL2) na sessão anterior,
+acumulamos workspaces divergentes: `~/ax12_control_ws` com symlinks pro clone, mais um
+`~/dev/ax12_control_ws` antigo (pré-rename `adam`→`adam_urdf`, com edições locais não
+commitadas e já superadas) sourced por engano no `.bashrc`, e na Pi um sparse-checkout só de
+`src/ax12_control` que quebrou assim que o `controle_manual.launch.py` passou a exigir também
+`adam_urdf`. Cada incompatibilidade desses custou uma rodada de "package not found".
+
+**Causa raiz comum:** o workspace era uma construção separada do clone git (symlink ou
+sparse-checkout), então as duas coisas podiam divergir — um `git pull` no clone não
+necessariamente refletia no workspace buildado, e vice-versa.
+
+**Solução:** eliminar a separação. O repositório já tem `src/` na raiz (decisão de
+"Código movido para src/", 2026-06-21), então o próprio clone funciona como workspace do
+`colcon build` direto — confirmado com um clone limpo (`git clone` + `colcon build` na raiz)
+buildando os 3 pacotes (`ax12_control`, `adam_urdf`, `adam_moveit_config`) sem nenhum passo
+extra. A receita agora é idêntica em qualquer máquina: clonar em `~/dev/Controle-Ax12---ROS2`,
+`colcon build` na raiz, `source install/setup.bash`. Apagamos os workspaces
+divergentes (`~/ax12_control_ws`, `~/dev/ax12_control_ws` no PC) e o sparse-checkout da Pi, e
+corrigimos `docs/install.md`, `src/README.md` e `docs/troubleshooting.md`.
+
+**Achado lateral:** `adam_moveit_config` existe no GitHub (builda normal num clone limpo) mas
+não aparecia no clone antigo do PC porque esse clone tinha um sparse-checkout restrito —
+não era de fato um pacote faltando no repositório, só uma cópia local limitada.
+
 ## 2026-06-27 — Claude (a pedido de Fernando) — Jog manual local (controle_manual.py)
 `[decisão]`
 Estávamos depurando descoberta DDS entre uma Raspberry Pi e um PC (Wi-Fi, ROS_DOMAIN_ID

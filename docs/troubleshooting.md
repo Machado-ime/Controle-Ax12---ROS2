@@ -9,7 +9,7 @@
 |---|---|---|
 | `Nao foi possivel abrir a porta` | Porta errada ou sem permissão | Confira com `ls /dev/ttyACM* /dev/ttyUSB*`. Permissão: `sudo usermod -aG dialout $USER` e relogue. Parâmetro: `--ros-args -p device:=/dev/ttyUSB0` |
 | `send_gait` roda mas o robô não se mexe | Máquinas em domínios diferentes ou QoS incompatível | `echo $ROS_DOMAIN_ID` deve ser igual nas duas. `ros2 topic info /joint_trajectory -v` deve listar 1 publisher e 1 subscription |
-| `Package 'ax12_control' not found` | Workspace não carregado | `source ~/ax12_control_ws/install/setup.bash` — confira se está no `~/.bashrc` |
+| `Package 'ax12_control' not found` | Workspace não carregado | `source ~/dev/Controle-Ax12---ROS2/install/setup.bash` — confira se está no `~/.bashrc` |
 | `ERRO no arquivo de marcha (...)` | YAML malformado, chave faltando ou matriz inconsistente | Corrija o `.yaml` — veja o formato em [arquitetura.md](arquitetura.md#marchas-arquivos-yaml) |
 | `arquivo de marcha nao encontrado` | Nome errado no parâmetro ou pacote não recompilado | Confira o nome (sem pasta, sem extensão) e rode `colcon build --packages-select ax12_control` |
 | Motor não responde ao ligar o torque | Motor sem alimentação, ID errado ou cabo solto | Wizard 2.0 com o barramento direto no PC ajuda a confirmar quais IDs estão vivos |

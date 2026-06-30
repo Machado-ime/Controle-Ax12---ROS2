@@ -157,35 +157,25 @@ ros2 launch adam_moveit_config demo.launch.py        # digital twin completo + M
 ros2 launch adam_moveit_config move_group.launch.py  # só o move_group (mock.launch.py já rodando)
 ```
 
-## Clonar só o essencial numa Raspberry Pi
+## Clonar e buildar — mesmo padrão em qualquer máquina
 
-A Pi só roda o `ax12_controller` — não precisa de `adam_urdf` (meshes/RViz) nem de
-`adam_moveit_config` (planejamento). Clone só `src/ax12_control` com sparse-checkout, **dentro
-do `src/` do seu workspace** (mesma regra de qualquer pacote ROS — é o que faz o `colcon
-build`, rodado da raiz do workspace, encontrar o pacote):
+O repositório já é o workspace: tem `src/` na raiz, então não precisa criar uma pasta de
+workspace separada nem symlink. A receita é a mesma em qualquer máquina — PC de comando ou
+Raspberry Pi (a Pi também roda `adam_urdf`, via `controle_manual.launch.py`, jog manual com
+RViz espelhando o robô real):
 
 ```bash
-mkdir -p ~/ax12_control_ws/src
-cd ~/ax12_control_ws/src
-git clone --filter=blob:none --no-checkout --depth 1 \
-  https://github.com/Machado-ime/Controle-Ax12---ROS2.git
-cd Controle-Ax12---ROS2
-git sparse-checkout init --cone
-git sparse-checkout set src/ax12_control
-git checkout main
+git clone https://github.com/Machado-ime/Controle-Ax12---ROS2.git ~/dev/Controle-Ax12---ROS2
+cd ~/dev/Controle-Ax12---ROS2
+colcon build
+echo "source ~/dev/Controle-Ax12---ROS2/install/setup.bash" >> ~/.bashrc
+source ~/.bashrc
 ```
 
-Para atualizar depois, é só `git pull` de dentro da pasta clonada — continua respeitando o
-sparse-checkout automaticamente:
+Para atualizar depois:
 
 ```bash
-cd ~/ax12_control_ws/src/Controle-Ax12---ROS2
+cd ~/dev/Controle-Ax12---ROS2
 git pull
-```
-
-E o build é sempre a partir da raiz do workspace, não da pasta clonada:
-
-```bash
-cd ~/ax12_control_ws
-colcon build --packages-select ax12_control
+colcon build
 ```

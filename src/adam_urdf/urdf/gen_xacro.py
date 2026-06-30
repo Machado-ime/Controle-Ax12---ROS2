@@ -13,7 +13,7 @@ adam_fixed.urdf = visual origins corrigidas manualmente; e' a base de verdade.
 Re-rode este script se o SolidWorks reexportar e as origens forem recalibradas.
 
 Uso:
-    cd ~/dev/ax12_control_ws/src/adam/urdf
+    cd ~/dev/Controle-Ax12---ROS2/src/adam_urdf/urdf
     python3 gen_xacro.py
 """
 

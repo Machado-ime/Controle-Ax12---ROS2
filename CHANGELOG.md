@@ -6,6 +6,13 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Alterado
+- Instalação simplificada: o clone do repositório agora É o workspace do `colcon` (tem `src/`
+  na raiz) — não usa mais workspace separado com symlink nem sparse-checkout. Receita única em
+  qualquer máquina: `git clone ... ~/dev/Controle-Ax12---ROS2 && cd ~/dev/Controle-Ax12---ROS2
+  && colcon build`. Atualizado em `docs/install.md`, `src/README.md` e
+  `docs/troubleshooting.md`.
+
 ### Adicionado
 - `controle_manual.py` + `controle_manual.launch.py` — janela Qt com um slider por
   junta para jog manual dos motores AX-12 reais. Publica só `/joint_trajectory`; o

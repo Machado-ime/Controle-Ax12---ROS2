@@ -9,18 +9,19 @@ Ver tabela em [README — Pré-requisitos](../README.md#pré-requisitos).
 
 ## Instalação
 
+O repositório já é o workspace: tem `src/` na raiz, então não precisa criar uma pasta de
+workspace separada nem symlink — clone e builde direto na raiz. Mesma receita em qualquer
+máquina (PC de comando ou Raspberry Pi):
+
 ```bash
-mkdir -p ~/ax12_control_ws/src
-cd ~/ax12_control_ws/src
-git clone https://github.com/Machado-ime/Controle-Ax12---ROS2.git
-
-cd ~/ax12_control_ws
+git clone https://github.com/Machado-ime/Controle-Ax12---ROS2.git ~/dev/Controle-Ax12---ROS2
+cd ~/dev/Controle-Ax12---ROS2
 source /opt/ros/jazzy/setup.bash
-colcon build --packages-select ax12_control
+colcon build
 
-echo "source /opt/ros/jazzy/setup.bash"            >> ~/.bashrc
-echo "source ~/ax12_control_ws/install/setup.bash" >> ~/.bashrc
-echo "export ROS_DOMAIN_ID=0"                       >> ~/.bashrc
+echo "source /opt/ros/jazzy/setup.bash"                     >> ~/.bashrc
+echo "source ~/dev/Controle-Ax12---ROS2/install/setup.bash" >> ~/.bashrc
+echo "export ROS_DOMAIN_ID=0"                                >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -31,7 +32,10 @@ source ~/.bashrc
 Para atualizar depois de um `git pull`:
 
 ```bash
-colcon build --packages-select ax12_control && source ~/.bashrc
+cd ~/dev/Controle-Ax12---ROS2
+git pull
+colcon build
+source ~/.bashrc
 ```
 
 ## Como rodar
