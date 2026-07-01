@@ -61,6 +61,14 @@ arquivo: ver `git log`.
   `AX12Controller_v2.py` — sem valor de referência, removidos em vez de arquivados.
 
 ### Corrigido
+- `ax12_controller.py`: as 4 juntas de pitch de tornozelo e quadril
+  (`pd_picht_tornozelo_3`, `pe_picht_tornozelo_4`, `pd_picht_quadril_7`,
+  `pe_pich_quadril_8`) estão com o motor montado com o eixo invertido em relação ao URDF —
+  o mesmo comando movia o modelo no RViz para um lado e o robô real para o outro. Adicionado o
+  conjunto `juntas_invertidas`, que troca o sinal do ângulo só na fronteira rad↔unidades do
+  motor (escrita e leitura), mantendo limites, marcha, `/joint_states` e RViz na convenção do
+  URDF. Como bônus, o clamp de limites passou a proteger o lado mecânico correto (os
+  `joint_limits` já estavam gravados na convenção do URDF).
 - `ax12_controller.py`: `joint_map`/`joint_limits` estavam com nomes de junta no padrão antigo
   (pré-URDF), o que descartava silenciosamente todos os comandos de marcha — revertido para o
   padrão de nomes do URDF, que é o que `send_gait` realmente publica.

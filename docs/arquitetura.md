@@ -84,6 +84,19 @@ Os nomes seguem a convenção do URDF (`adam.urdf`): `{lado}_{movimento}_{segmen
 
 Para ativar uma junta nova (braços, pescoço): adicione ao `joint_map` em `ax12_controller.py` sem repetir ID. Se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do YAML, na mesma posição.
 
+### Juntas com eixo invertido
+
+Quatro motores estão montados com o eixo de rotação **invertido** em relação ao URDF (as pernas foram construídas espelhadas no URDF, com o mesmo `axis xyz="0 0 1"` local apontando para lados opostos no mundo). Sem correção, o mesmo comando `+θ` gira o modelo no RViz para um lado e o motor real para o outro.
+
+| Junta invertida |
+|---|
+| `pd_picht_tornozelo_3` |
+| `pe_picht_tornozelo_4` |
+| `pd_picht_quadril_7` |
+| `pe_pich_quadril_8` |
+
+O `ax12_controller` corrige isso com o conjunto `juntas_invertidas`, trocando o sinal do ângulo **apenas na fronteira rad↔unidades do motor** (na escrita e na leitura de telemetria). Todo o resto do sistema — `joint_limits`, matrizes de marcha, `/joint_states`, RViz, MoveIt — permanece na convenção do URDF. É o mesmo papel do flag de direção por junta de um `SystemInterface` do `ros2_control`. Os `joint_limits` já estão gravados na convenção do URDF (medidos no motor e negados), então o clamp continua correto. Joelhos e rolls **não** são invertidos.
+
 ### Tolerância a falhas
 
 - USB cai em operação → reconecta a cada comando recebido (religa o torque). Após 10 falhas consecutivas, desativa a escrita com aviso fatal em `/hardware_errors`.

@@ -127,6 +127,24 @@ class AX12HardwareInterface(Node):
             'pe_roll_quadril_10':   (-LIMITE_RAD, LIMITE_RAD),
         }
 
+        # Juntas cujo motor está montado com o eixo INVERTIDO em relação ao
+        # URDF: o mesmo comando +θ gira o modelo para um lado e o motor real
+        # para o outro (URDF leva o pé à frente, motor leva atrás). Corrigimos
+        # trocando o sinal APENAS na fronteira rad<->unidades do motor (na
+        # escrita e na leitura), mantendo todo o resto — joint_limits, marcha,
+        # /joint_states, RViz — na convenção do URDF. É o mesmo que um
+        # SystemInterface do ros2_control faz com um flag de direção por junta.
+        # Os limites em joint_limits JÁ estão na convenção do URDF (medidos no
+        # motor e negados), então o clamp continua correto após a inversão.
+        # São as 4 juntas de PITCH de tornozelo e quadril (verificado no
+        # hardware); joelhos e rolls não são invertidos.
+        self.juntas_invertidas = {
+            'pd_picht_tornozelo_3',
+            'pe_picht_tornozelo_4',
+            'pd_picht_quadril_7',
+            'pe_pich_quadril_8',
+        }
+
         # --- Estado da conexão serial ---
         self.port_ok = False          # a porta está aberta e funcionando?
         self.falhas_reconexao = 0     # reconexões falhas consecutivas
@@ -346,8 +364,12 @@ class AX12HardwareInterface(Node):
                     f'{joint_name}: {cmd_rad:.3f} rad fora do limite '
                     f'[{low:.3f}, {high:.3f}] — clampado para {rads:.3f} rad.')
 
+            # Motor com eixo invertido: passa da convenção do URDF para a do
+            # motor trocando o sinal (o clamp acima já usou os limites do URDF).
+            rads_motor = -rads if joint_name in self.juntas_invertidas else rads
+
             # --- CONVERSÃO DE POSIÇÃO (rad -> 0 a 1023) ---
-            goal_pos = round((rads + LIMITE_RAD) * POS_POR_RAD)
+            goal_pos = round((rads_motor + LIMITE_RAD) * POS_POR_RAD)
             goal_pos = max(0, min(1023, goal_pos))
 
             # --- CONVERSÃO DE VELOCIDADE (rad/s -> 1 a 1023) ---
@@ -427,6 +449,13 @@ class AX12HardwareInterface(Node):
             # Velocidade e carga usam 10 bits + bit de direção (>=1024 = horário)
             vel_rad_s = (vel_raw & 0x3FF) / UNIDADES_POR_RAD_S
             if vel_raw >= 1024:
+                vel_rad_s = -vel_rad_s
+
+            # Motor com eixo invertido: traz posição e velocidade de volta para
+            # a convenção do URDF (inverso da troca de sinal feita na escrita),
+            # para o /joint_states e o RViz baterem com o modelo.
+            if joint_name in self.juntas_invertidas:
+                pos_rad = -pos_rad
                 vel_rad_s = -vel_rad_s
 
             carga_pct = (carga_raw & 0x3FF) / 10.23   # % do torque máximo

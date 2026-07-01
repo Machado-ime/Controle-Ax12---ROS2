@@ -5,6 +5,36 @@ Append-only: não reescreva relatos antigos; corrija com um relato novo e datado
 
 ---
 
+## 2026-07-01 — Claude (a pedido de Fernando) — Corrige juntas de pitch com eixo invertido
+`[problema]`
+Testando o `controle_manual` com o robô real (motores ligados no PC via usbipd), o Fernando
+notou que ao comandar as juntas de pitch de quadril e tornozelo o motor real ia para o lado
+**oposto** do modelo no RViz (URDF leva o pé à frente, motor leva atrás). Testado junta a
+junta: as 4 juntas de pitch de tornozelo e quadril (`pd_picht_tornozelo_3`,
+`pe_picht_tornozelo_4`, `pd_picht_quadril_7`, `pe_pich_quadril_8`) invertidas; joelhos e rolls
+corretos.
+
+**Causa raiz:** as pernas foram construídas espelhadas no URDF (os `rpy` dos joints de perna
+esquerda e direita são opostos), mas com o mesmo `axis xyz="0 0 1"` local — então o eixo
+positivo aponta para lados opostos no mundo, e não bate com a direção física de montagem do
+motor. O `ax12_controller` convertia rad→unidades com uma fórmula única, sem sinal por junta.
+Pista confirmadora: os `joint_limits` do `pd_picht_tornozelo_3` estavam gravados como
+`(-1.4661, 0.5585)`, exatamente a **negação** da faixa física medida do motor
+`(-0.5585, 1.4661)` (118°–234° na escala do AX-12) — ou seja, os limites já tinham sido
+gravados na convenção do URDF esperando a inversão, mas a conversão nunca a fazia (e por isso
+o clamp ainda protegia o lado mecânico errado).
+
+**Solução:** conjunto `juntas_invertidas` no `ax12_controller`, que troca o sinal do ângulo
+**apenas na fronteira rad↔unidades do motor** — na escrita (após o clamp, que continua nos
+limites do URDF) e na leitura de telemetria (posição e velocidade, antes de publicar
+`/joint_states`). Todo o resto — limites, matrizes de marcha, `/joint_states`, RViz, MoveIt —
+fica na convenção do URDF. É o papel do flag de direção por junta de um `SystemInterface` do
+`ros2_control`. Não mexer no URDF (é a fonte de verdade cinemática; inverter o eixo lá
+quebraria as marchas e o planejamento).
+
+**Como evitar:** ao ligar um motor novo, testar a direção no `controle_manual` (real vs RViz)
+antes de comandá-lo na marcha; se invertido, adicionar o nome a `juntas_invertidas`.
+
 ## 2026-06-30 — Claude (a pedido de Fernando) — Simplifica instalação: clone = workspace
 `[decisão]`
 Depurando o `controle_manual.launch.py` em duas máquinas (Pi e PC/WSL2) na sessão anterior,
