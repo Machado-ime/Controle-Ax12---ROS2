@@ -1,0 +1,56 @@
+# =====================================================================
+# MATRIZ DE MOVIMENTO "cin_inve_roll" — cin_inve + deslocamento lateral (roll).
+#
+# Baseada na cin_inve.yaml (pitch das pernas por cinemática inversa), mas com
+# o balanceio lateral de peso (roll) intercalado, vindo do estudo de dinâmica
+# (angulos_roll.csv). Vira um ciclo quase-estático de 6 etapas:
+#
+#   1) pé direito à frente, nivelado           (= cin_inve col 1, rolls 0)
+#   2) inclina p/ DIREITA                        (mesmo pitch de 1)
+#   3) pé esquerdo à frente, ainda inclinado dir (pitch = cin_inve col 3)
+#   4) pé esquerdo à frente, nivelado            (mesmo pitch de 3, rolls 0)
+#   5) inclina p/ ESQUERDA                        (mesmo pitch de 4)
+#   6) pé direito à frente, ainda inclinado esq   (pitch = cin_inve col 1)
+#
+# Lógica: inclina para o lado da perna de apoio → passa a perna livre à
+# frente → nivela → inclina para o outro lado → passa a outra perna.
+#
+# ROLL: amplitude 0.2396 rad (13.73°, pico do angulos_roll.csv). O roll do
+# tornozelo e do quadril são IGUAIS E OPOSTOS (mantém o tronco na vertical
+# enquanto o centro de massa desloca lateralmente).
+#
+# ATENÇÃO — convenção de sinal do roll: "direita"/"esquerda" aqui é uma
+# suposição. Se no RViz/robô inclinar para o lado ERRADO, troque os blocos
+# das colunas 2/3 com 5/6 (ou negue todas as 4 linhas de roll).
+#
+# Diferente da cin_inve, esta matriz JÁ inclui as 4 juntas de roll
+# (tornozelos e quadris), então são 10 juntas × 6 colunas.
+# =====================================================================
+
+passo: 1.0
+pausa: 0.5
+
+nomes_juntas:
+  - pd_picht_tornozelo_3
+  - pe_picht_tornozelo_4
+  - pd_roll_tornozelo_1
+  - pe_roll_tornozelo_2
+  - pd_picht_joelho_5
+  - pe_picht_joelho_6
+  - pd_picht_quadril_7
+  - pe_pich_quadril_8
+  - pd_roll_quadril_9
+  - pe_roll_quadril_10
+
+matriz_movimento:
+  #    1:dir_frente 2:inc_dir    3:esq_frente 4:nivelado   5:inc_esq    6:dir_frente
+  - [-0.235500,    -0.235500,    -0.947100,   -0.947100,   -0.947100,   -0.235500]  # pd_picht_tornozelo_3
+  - [ 0.947100,     0.947100,     0.235500,    0.235500,    0.235500,    0.947100]  # pe_picht_tornozelo_4
+  - [ 0.000000,     0.239600,     0.239600,    0.000000,   -0.239600,   -0.239600]  # pd_roll_tornozelo_1
+  - [ 0.000000,     0.239600,     0.239600,    0.000000,   -0.239600,   -0.239600]  # pe_roll_tornozelo_2
+  - [ 1.200200,     1.200200,     1.171100,    1.171100,    1.171100,    1.200200]  # pd_picht_joelho_5
+  - [-1.171000,    -1.171000,    -1.200200,   -1.200200,   -1.200200,   -1.171000]  # pe_picht_joelho_6
+  - [-0.964700,    -0.964700,    -0.223900,   -0.223900,   -0.223900,   -0.964700]  # pd_picht_quadril_7
+  - [ 0.223900,     0.223900,     0.964700,    0.964700,    0.964700,    0.223900]  # pe_pich_quadril_8
+  - [ 0.000000,    -0.239600,    -0.239600,    0.000000,    0.239600,    0.239600]  # pd_roll_quadril_9
+  - [ 0.000000,    -0.239600,    -0.239600,    0.000000,    0.239600,    0.239600]  # pe_roll_quadril_10
