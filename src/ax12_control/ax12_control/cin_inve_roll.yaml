@@ -11,10 +11,10 @@
 #   3) pé esquerdo à frente       — nivelado (rolls 0)
 #   4) pé direito SOBE            — inclina p/ ESQUERDA (peso no pé esquerdo)
 #
-# ROLL: amplitude 0.2396 rad (13.73°, pico do angulos_roll.csv). Roll do
-# tornozelo e do quadril IGUAIS E OPOSTOS (mantém o tronco na vertical enquanto
-# o CoM desloca). Sinal já verificado no robô (2026-07-01): tornozelo -0.2396 /
-# quadril +0.2396 = inclina para a DIREITA.
+# ROLL: amplitude 0.3 rad (17.19°), ajustada manualmente a partir do pico do
+# angulos_roll.csv (13.73°). Roll do tornozelo e do quadril IGUAIS E OPOSTOS
+# (mantém o tronco na vertical enquanto o CoM desloca). Sinal já verificado no
+# robô (2026-07-01): tornozelo -0.3 / quadril +0.3 = inclina para a DIREITA.
 #
 # Diferente da cin_inve, esta matriz JÁ inclui as 4 juntas de roll
 # (tornozelos e quadris): 10 juntas × 4 colunas.
@@ -40,11 +40,11 @@ matriz_movimento:
   #                 (inc.dir)                 (inc.esq)
   - [-0.235500,    -0.727600,    -0.947100,   -1.207900]  # pd_picht_tornozelo_3
   - [ 0.947100,     1.207900,     0.235500,    0.727600]  # pe_picht_tornozelo_4
-  - [ 0.000000,    -0.239600,     0.000000,    0.239600]  # pd_roll_tornozelo_1
-  - [ 0.000000,    -0.239600,     0.000000,    0.239600]  # pe_roll_tornozelo_2
+  - [ 0.000000,    -0.300000,     0.000000,    0.300000]  # pd_roll_tornozelo_1
+  - [ 0.000000,    -0.300000,     0.000000,    0.300000]  # pe_roll_tornozelo_2
   - [ 1.200200,     1.456600,     1.171100,    2.410600]  # pd_picht_joelho_5
   - [-1.171000,    -2.410600,    -1.200200,   -1.456600]  # pe_picht_joelho_6
   - [-0.964700,    -0.729000,    -0.223900,   -1.202700]  # pd_picht_quadril_7
   - [ 0.223900,     1.202700,     0.964700,    0.729000]  # pe_pich_quadril_8
-  - [ 0.000000,     0.239600,     0.000000,   -0.239600]  # pd_roll_quadril_9
-  - [ 0.000000,     0.239600,     0.000000,   -0.239600]  # pe_roll_quadril_10
+  - [ 0.000000,     0.300000,     0.000000,   -0.300000]  # pd_roll_quadril_9
+  - [ 0.000000,     0.300000,     0.000000,   -0.300000]  # pe_roll_quadril_10
