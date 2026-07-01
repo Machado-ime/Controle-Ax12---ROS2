@@ -15,7 +15,8 @@ src/
 │   │   └── ax12_control
 │   ├── launch/
 │   │   ├── visualizar_marcha.launch.py
-│   │   └── controle_manual.launch.py
+│   │   ├── controle_manual.launch.py
+│   │   └── marcha_manual.launch.py
 │   └── ax12_control/             # módulo Python (mesmo nome = convenção ament_python)
 │       ├── __init__.py
 │       ├── ax12_controller.py
@@ -24,6 +25,7 @@ src/
 │       ├── visualizar_marcha.py
 │       ├── passo_slider.py
 │       ├── controle_manual.py
+│       ├── marcha_manual.py
 │       ├── gait_bridge.py
 │       ├── adam.rviz
 │       ├── otimizada.yaml
@@ -78,6 +80,7 @@ marcha mora aqui. Documentação aprofundada: [docs/arquitetura.md](../docs/arqu
 | `visualizar_marcha.py` | Publica `/joint_states` direto do YAML, sem `ros2_control` — visualização sem hardware |
 | `passo_slider.py` | Janela Qt com slider/botões para escolher manualmente a etapa da marcha no RViz |
 | `controle_manual.py` | Janela Qt com um slider por junta — jog manual dos motores reais via `/joint_trajectory`, com o RViz espelhando a posição real (telemetria do `ax12_controller`) |
+| `marcha_manual.py` | Janela Qt com slider/botões para escolher a coluna da matriz de marcha — o robô real vai à pose da etapa escolhida e o RViz espelha a posição real (une `visualizar_marcha` + `controle_manual`) |
 | `gait_bridge.py` | Ponte entre `send_gait` (QoS BEST_EFFORT) e os `JointTrajectoryController` do `adam_urdf`/MoveIt2 (QoS RELIABLE) |
 | `otimizada.yaml`, `cin_inve.yaml` | As duas marchas prontas (6 e 8 juntas, respectivamente) |
 | `adam.rviz` | Config do RViz usada por `visualizar_marcha.launch.py` |
@@ -140,6 +143,13 @@ ros2 launch ax12_control visualizar_marcha.launch.py matriz:=cin_inve   # ou oti
 ```bash
 ros2 launch ax12_control controle_manual.launch.py
 ros2 launch ax12_control controle_manual.launch.py device:=/dev/ttyUSB0 velocidade:=0.5
+```
+
+**`ax12_control` — launch (marcha por matriz no robô real: escolhe a coluna e o robô vai):**
+
+```bash
+ros2 launch ax12_control marcha_manual.launch.py                    # matriz otimizada
+ros2 launch ax12_control marcha_manual.launch.py matriz:=cin_inve
 ```
 
 **`adam_urdf` — launch:**

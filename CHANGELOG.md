@@ -14,6 +14,11 @@ arquivo: ver `git log`.
   `docs/troubleshooting.md`.
 
 ### Adicionado
+- `marcha_manual.py` + `marcha_manual.launch.py` — janela Qt com slider/botões ◀▶ para
+  escolher a coluna (etapa) de uma matriz de marcha; o robô real vai à pose escolhida e o RViz
+  espelha a posição real. Une o seletor de passo do `visualizar_marcha`/`passo_slider` com o
+  envio ao hardware do `controle_manual`. Reaproveita o carregador/validador de matriz do
+  `send_gait` e passa pelo `ax12_controller` (herda a correção de juntas invertidas).
 - `controle_manual.py` + `controle_manual.launch.py` — janela Qt com um slider por
   junta para jog manual dos motores AX-12 reais. Publica só `/joint_trajectory`; o
   RViz acompanha via a telemetria real já publicada pelo `ax12_controller`,

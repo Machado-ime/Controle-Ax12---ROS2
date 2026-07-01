@@ -14,6 +14,7 @@ setup(
         ('share/' + package_name + '/launch', [
             'launch/visualizar_marcha.launch.py',
             'launch/controle_manual.launch.py',
+            'launch/marcha_manual.launch.py',
         ]),
     ],
     # Faz o(s) YAML(s) de marcha viajarem junto com o módulo na instalação,
@@ -39,6 +40,7 @@ setup(
             'gait_bridge = ax12_control.gait_bridge:main',
             'passo_slider = ax12_control.passo_slider:main',
             'controle_manual = ax12_control.controle_manual:main',
+            'marcha_manual = ax12_control.marcha_manual:main',
         ],
     },
 )

@@ -211,6 +211,12 @@ Sobe três nós:
 - **Manual** (`passo_s:=0.0`, padrão) — espera mensagens `Int32` em `/passo_marcha` (é o que o `passo_slider` envia). Também aceita comando direto, sem o slider: `ros2 topic pub --once /passo_marcha std_msgs/msg/Int32 "data: N"`.
 - **Automático** (ex.: `passo_s:=0.5`) — timer avança a etapa sozinho a cada N segundos.
 
+### `marcha_manual.py` — marcha por matriz no robô real (`marcha_manual.launch.py`)
+
+Une o seletor de coluna do `visualizar_marcha`/`passo_slider` com o envio ao hardware do `controle_manual`: uma janela Qt com slider/botões ◀▶ escolhe a **coluna** (etapa) da matriz de marcha, e o robô **real** vai para aquela pose. Ideal para percorrer a marcha passo a passo, no seu tempo, com o robô ligado — em vez de rodar tudo automático (`send_gait`) ou só no RViz (`visualizar_marcha`).
+
+Publica só `/joint_trajectory` (mesmo tópico do `ax12_controller`); o RViz mostra a posição **real** via `/joint_states` do controlador — mesma decisão de design do `controle_manual` (sem duplicar publisher de `/joint_states`). Reaproveita `resolver_caminho_matriz`/`carregar_marcha` do `send_gait` para ler e validar a matriz, e calcula a velocidade de cada junta como `|Δ| / passo` (todas chegam juntas, como no `send_gait`). Como passa pelo `ax12_controller`, herda a correção de juntas invertidas.
+
 ### `gait_bridge.py` — ponte para o `ros2_control` (Caso 2: MoveIt2/mock)
 
 Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s do pacote `adam_urdf` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). Sem o bridge os dois lados nunca se conectam, mesmo com os nomes de junta certos, porque o QoS é incompatível.

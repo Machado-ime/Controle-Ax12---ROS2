@@ -56,7 +56,8 @@ Controle-Ax12---ROS2/
 │   │   ├── setup.py
 │   │   ├── launch/
 │   │   │   ├── visualizar_marcha.launch.py
-│   │   │   └── controle_manual.launch.py
+│   │   │   ├── controle_manual.launch.py
+│   │   │   └── marcha_manual.launch.py
 │   │   └── ax12_control/      # módulo Python (nome repetido = convenção ament_python)
 │   │       ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
 │   │       ├── send_gait.py         # gerador de marcha (PC de comando)
@@ -64,6 +65,7 @@ Controle-Ax12---ROS2/
 │   │       ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
 │   │       ├── passo_slider.py      # janela Qt p/ escolher a etapa da marcha manualmente
 │   │       ├── controle_manual.py   # janela Qt: jog manual dos motores reais + RViz junto
+│   │       ├── marcha_manual.py     # janela Qt: escolhe coluna da matriz -> robô real + RViz
 │   │       ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2, MoveIt)
 │   │       ├── adam.rviz            # config RViz pré-configurado para o Adam
 │   │       ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
@@ -92,6 +94,7 @@ Controle-Ax12---ROS2/
 | `ax12_monitor` | PC de comando | Painel de telemetria ao vivo no terminal |
 | `visualizar_marcha` + `passo_slider` | PC de comando | Digital twin no RViz sem hardware |
 | `controle_manual` | Raspberry Pi | Jog manual por slider — move o motor real e o RViz ao mesmo tempo (RViz via telemetria real do `ax12_controller`) |
+| `marcha_manual` | Raspberry Pi | Escolhe a coluna da matriz de marcha por slider — robô real vai à pose da etapa e o RViz espelha (une `visualizar_marcha` + `controle_manual`) |
 | `gait_bridge` | PC de comando | Ponte para `ros2_control`/MoveIt2 (pacotes `adam_urdf`/`adam_moveit_config`, em `src/`) |
 
 | Tópico | Tipo | QoS |
