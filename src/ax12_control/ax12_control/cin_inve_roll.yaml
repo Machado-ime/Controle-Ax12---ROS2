@@ -17,11 +17,9 @@
 #
 # ROLL: amplitude 0.2396 rad (13.73°, pico do angulos_roll.csv). O roll do
 # tornozelo e do quadril são IGUAIS E OPOSTOS (mantém o tronco na vertical
-# enquanto o centro de massa desloca lateralmente).
-#
-# ATENÇÃO — convenção de sinal do roll: "direita"/"esquerda" aqui é uma
-# suposição. Se no RViz/robô inclinar para o lado ERRADO, troque os blocos
-# das colunas 2/3 com 5/6 (ou negue todas as 4 linhas de roll).
+# enquanto o centro de massa desloca lateralmente). O SINAL do roll já foi
+# verificado no robô (2026-07-01): col 2/3 inclinam para a DIREITA, col 5/6
+# para a ESQUERDA.
 #
 # Diferente da cin_inve, esta matriz JÁ inclui as 4 juntas de roll
 # (tornozelos e quadris), então são 10 juntas × 6 colunas.
@@ -46,11 +44,11 @@ matriz_movimento:
   #    1:dir_frente 2:inc_dir    3:esq_frente 4:nivelado   5:inc_esq    6:dir_frente
   - [-0.235500,    -0.235500,    -0.947100,   -0.947100,   -0.947100,   -0.235500]  # pd_picht_tornozelo_3
   - [ 0.947100,     0.947100,     0.235500,    0.235500,    0.235500,    0.947100]  # pe_picht_tornozelo_4
-  - [ 0.000000,     0.239600,     0.239600,    0.000000,   -0.239600,   -0.239600]  # pd_roll_tornozelo_1
-  - [ 0.000000,     0.239600,     0.239600,    0.000000,   -0.239600,   -0.239600]  # pe_roll_tornozelo_2
+  - [ 0.000000,    -0.239600,    -0.239600,    0.000000,    0.239600,    0.239600]  # pd_roll_tornozelo_1
+  - [ 0.000000,    -0.239600,    -0.239600,    0.000000,    0.239600,    0.239600]  # pe_roll_tornozelo_2
   - [ 1.200200,     1.200200,     1.171100,    1.171100,    1.171100,    1.200200]  # pd_picht_joelho_5
   - [-1.171000,    -1.171000,    -1.200200,   -1.200200,   -1.200200,   -1.171000]  # pe_picht_joelho_6
   - [-0.964700,    -0.964700,    -0.223900,   -0.223900,   -0.223900,   -0.964700]  # pd_picht_quadril_7
   - [ 0.223900,     0.223900,     0.964700,    0.964700,    0.964700,    0.223900]  # pe_pich_quadril_8
-  - [ 0.000000,    -0.239600,    -0.239600,    0.000000,    0.239600,    0.239600]  # pd_roll_quadril_9
-  - [ 0.000000,    -0.239600,    -0.239600,    0.000000,    0.239600,    0.239600]  # pe_roll_quadril_10
+  - [ 0.000000,     0.239600,     0.239600,    0.000000,   -0.239600,   -0.239600]  # pd_roll_quadril_9
+  - [ 0.000000,     0.239600,     0.239600,    0.000000,   -0.239600,   -0.239600]  # pe_roll_quadril_10
