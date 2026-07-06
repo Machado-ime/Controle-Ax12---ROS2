@@ -3,10 +3,12 @@
 #
 # Gerada de cin_ive_2.mat (Cinematica inversa dos pes). Mesma estrutura da
 # matriz_zmp (mesmas 8 etapas), mas com amplitude de passada maior nas juntas
-# de pitch (tornozelo/joelho/quadril). Roll de tornozelo mantido em 0.2525 rad
-# (14.47 graus, igual à matriz_zmp); rolls de quadril (pd_roll_quadril_9 /
-# pe_roll_quadril_10) zerados manualmente — deixam de compensar o roll do
-# tornozelo, então o tronco NÃO fica mais na vertical durante o balanceio.
+# de pitch (tornozelo/joelho/quadril). Rolls de quadril (pd_roll_quadril_9 /
+# pe_roll_quadril_10) ajustados manualmente para ter os MESMOS valores E
+# MESMO SINAL dos rolls de tornozelo correspondentes (pd_roll_tornozelo_1 /
+# pe_roll_tornozelo_2), em vez de opostos — quadril e tornozelo rolam juntos
+# para o mesmo lado, então o tronco NÃO fica mais na vertical durante o
+# balanceio (diferente da matriz_zmp, onde são opostos e compensam).
 #
 # As 8 etapas (colunas), na ordem do .mat:
 #   1) PD_frente_roll_centro
@@ -47,5 +49,5 @@ matriz_movimento:
   - [ -1.269200, -1.269200, -1.872100, -1.250900, -1.250900, -1.250900, -1.288700, -1.269200 ]  # pe_picht_joelho_6
   - [ -0.508500, -0.508500, -0.644000, -0.751300, -0.751300, -0.751300, -0.932500, -0.508500 ]  # pd_picht_quadril_7
   - [  0.751300,  0.751300,  0.932500,  0.508500,  0.508500,  0.508500,  0.644000,  0.751300 ]  # pe_pich_quadril_8
-  - [  0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000 ]  # pd_roll_quadril_9
-  - [  0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000,  0.000000 ]  # pe_roll_quadril_10
+  - [  0.000000, -0.252549, -0.252549, -0.252549,  0.000000,  0.252549,  0.000000,  0.000000 ]  # pd_roll_quadril_9
+  - [  0.000000, -0.252549,  0.000000,  0.000000,  0.000000,  0.252549,  0.252549,  0.252549 ]  # pe_roll_quadril_10
