@@ -1,0 +1,50 @@
+# =====================================================================
+# MATRIZ DE MOVIMENTO "cin_inve_2" — marcha por ZMP, passada maior.
+#
+# Gerada de cin_ive_2.mat (Cinematica inversa dos pes). Mesma estrutura da
+# matriz_zmp (mesmas 8 etapas e mesmo balanceio lateral/roll), mas com
+# amplitude de passada maior nas juntas de pitch (tornozelo/joelho/quadril).
+# Roll amplitude 0.2525 rad (14.47 graus), tornozelo e quadril iguais e
+# opostos (tronco na vertical) — idêntico à matriz_zmp.
+#
+# As 8 etapas (colunas), na ordem do .mat:
+#   1) PD_frente_roll_centro
+#   2) PD_frente_peso_dir
+#   3) PE_no_ar_peso_dir
+#   4) PE_frente_peso_dir
+#   5) PE_frente_roll_centro
+#   6) PE_frente_peso_esq
+#   7) PD_no_ar_peso_esq
+#   8) PD_frente_peso_esq
+#
+# Legenda: PD/PE = pe direito/esquerdo; frente/no_ar = apoiado a frente / no ar;
+# roll_centro = rolls neutros; peso_dir/peso_esq = peso (ZMP) transferido para a
+# perna direita/esquerda. Gerada por script a partir do .mat (valores exatos).
+# =====================================================================
+
+passo: 1.0
+pausa: 0.5
+
+nomes_juntas:
+  - pd_roll_tornozelo_1
+  - pe_roll_tornozelo_2
+  - pd_picht_tornozelo_3
+  - pe_picht_tornozelo_4
+  - pd_picht_joelho_5
+  - pe_picht_joelho_6
+  - pd_picht_quadril_7
+  - pe_pich_quadril_8
+  - pd_roll_quadril_9
+  - pe_roll_quadril_10
+
+matriz_movimento:
+  - [  0.000000, -0.252549, -0.252549, -0.252549,  0.000000,  0.252549,  0.000000,  0.000000 ]  # pd_roll_tornozelo_1
+  - [  0.000000, -0.252549,  0.000000,  0.000000,  0.000000,  0.252549,  0.252549,  0.252549 ]  # pe_roll_tornozelo_2
+  - [ -0.742400, -0.742400, -0.644700, -0.517900, -0.517900, -0.517900, -0.939500, -0.742400 ]  # pd_picht_tornozelo_3
+  - [  0.517900,  0.517900,  0.939500,  0.742400,  0.742400,  0.742400,  0.644700,  0.517900 ]  # pe_picht_tornozelo_4
+  - [  1.250900,  1.250900,  1.288700,  1.269200,  1.269200,  1.269200,  1.872100,  1.250900 ]  # pd_picht_joelho_5
+  - [ -1.269200, -1.269200, -1.872100, -1.250900, -1.250900, -1.250900, -1.288700, -1.269200 ]  # pe_picht_joelho_6
+  - [ -0.508500, -0.508500, -0.644000, -0.751300, -0.751300, -0.751300, -0.932500, -0.508500 ]  # pd_picht_quadril_7
+  - [  0.751300,  0.751300,  0.932500,  0.508500,  0.508500,  0.508500,  0.644000,  0.751300 ]  # pe_pich_quadril_8
+  - [  0.000000,  0.252549,  0.252549,  0.252549,  0.000000, -0.252549,  0.000000,  0.000000 ]  # pd_roll_quadril_9
+  - [  0.000000,  0.252549,  0.000000,  0.000000,  0.000000, -0.252549, -0.252549, -0.252549 ]  # pe_roll_quadril_10

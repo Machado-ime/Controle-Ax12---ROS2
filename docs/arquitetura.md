@@ -174,6 +174,9 @@ matriz_movimento:         # 1 linha por junta (mesma ordem)
 |---|---|---|
 | `otimizada.yaml` (padrão) | 6 — pitches de tornozelo, joelho e quadril | Ajustada manualmente. Os rolls de tornozelo (`pd_roll_tornozelo_1`/`pe_roll_tornozelo_2`) ficam de fora: recebem torque mas não são comandados. |
 | `cin_inve.yaml` | 8 — inclui rolls de tornozelo | Gerada da cinemática inversa dos pés (`angulos.mat`). Rolls comandados em 0 rad (centro). |
+| `cin_inve_roll.yaml` | 10 — cin_inve + rolls de tornozelo e quadril | `cin_inve` com balanceio lateral (roll, 0.3 rad) simultâneo à subida do pé — desloca o peso para o lado de apoio. |
+| `matriz_zmp.yaml` | 10 — todas as juntas de perna | Marcha completa por planejamento de ZMP (`matriz_passo.mat`), 8 etapas: roll/peso neutro → transferência de peso → perna no ar → perna à frente, e o espelho do outro lado. Roll 0.2525 rad. |
+| `cin_inve_2.yaml` | 10 — todas as juntas de perna | Mesma estrutura da `matriz_zmp` (8 etapas, mesmo roll), gerada de `cin_ive_2.mat` com amplitude de passada maior nas juntas de pitch. |
 
 ### Selecionar a marcha
 

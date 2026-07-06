@@ -29,7 +29,10 @@ src/
 │       ├── gait_bridge.py
 │       ├── adam.rviz
 │       ├── otimizada.yaml
-│       └── cin_inve.yaml
+│       ├── cin_inve.yaml
+│       ├── cin_inve_roll.yaml
+│       ├── matriz_zmp.yaml
+│       └── cin_inve_2.yaml
 │
 ├── adam_urdf/                    # pacote: URDF, meshes e launch files do robô
 │   ├── package.xml
@@ -82,7 +85,7 @@ marcha mora aqui. Documentação aprofundada: [docs/arquitetura.md](../docs/arqu
 | `controle_manual.py` | Janela Qt com um slider por junta — jog manual dos motores reais via `/joint_trajectory`, com o RViz espelhando a posição real (telemetria do `ax12_controller`) |
 | `marcha_manual.py` | Janela Qt com slider/botões para escolher a coluna da matriz de marcha — o robô real vai à pose da etapa escolhida e o RViz espelha a posição real (une `visualizar_marcha` + `controle_manual`) |
 | `gait_bridge.py` | Ponte entre `send_gait` (QoS BEST_EFFORT) e os `JointTrajectoryController` do `adam_urdf`/MoveIt2 (QoS RELIABLE) |
-| `otimizada.yaml`, `cin_inve.yaml` | As duas marchas prontas (6 e 8 juntas, respectivamente) |
+| `otimizada.yaml`, `cin_inve.yaml`, `cin_inve_roll.yaml`, `matriz_zmp.yaml`, `cin_inve_2.yaml` | Marchas prontas — detalhes de cada uma em [docs/arquitetura.md](../../docs/arquitetura.md#marchas-disponíveis) |
 | `adam.rviz` | Config do RViz usada por `visualizar_marcha.launch.py` |
 | `package.xml` / `setup.py` / `setup.cfg` / `resource/` | Metadados do pacote (dependências, `console_scripts`, instalação) |
 

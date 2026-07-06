@@ -6,6 +6,11 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Adicionado
+- `cin_inve_2.yaml` — marcha completa por ZMP (10 juntas x 8 etapas), gerada de
+  `cin_ive_2.mat`, mesma estrutura da `matriz_zmp` mas com amplitude de passada maior nas
+  juntas de pitch.
+
 ### Alterado
 - Instalação simplificada: o clone do repositório agora É o workspace do `colcon` (tem `src/`
   na raiz) — não usa mais workspace separado com symlink nem sparse-checkout. Receita única em
