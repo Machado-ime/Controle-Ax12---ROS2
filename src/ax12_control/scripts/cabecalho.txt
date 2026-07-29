@@ -1,0 +1,10 @@
+# =====================================================================
+# MATRIZ DE MOVIMENTO "marcha_avanco_suave" — mega matriz derivada de
+# marcha_avanco (X=+-10mm, altura 190mm, roll +-16 graus, trim -7 graus,
+# pausa 0.15s nas colunas de transferencia de peso 2/6, quebra de
+# paralelogramo de 3 graus no tornozelo de apoio) por rampa cosseno
+# (raised-cosine) entre colunas consecutivas, dt~0.02s. Regenerada
+# automaticamente a cada mudanca de parametro em marcha_avanco via
+# gerar_mega_matriz.py — NAO editar a mao.
+# =====================================================================
+

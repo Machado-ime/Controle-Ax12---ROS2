@@ -1,0 +1,50 @@
+# =====================================================================
+# MATRIZ DE MOVIMENTO "teste_equilibrio" — marcha NO LUGAR, 8 etapas,
+# gerada pela IK do controle_pe (Newton sobre a FK do URDF, pé paralelo
+# ao tronco, rolls via SINAIS_ROLL, trim de quadril -5° via
+# SINAIS_TRIM_QUADRIL — mesma lógica da marcha_pe). X=0 em TODAS as
+# colunas: nenhum pé avança, só transferência de peso lateral (roll) +
+# levantar cada pé (15mm), em colunas SEPARADAS — diferente da marcha_pe,
+# que funde roll+levantamento na mesma coluna.
+#
+# As 8 etapas (roll°, x_mm, pd_z_mm, pe_z_mm):
+#   1) roll=  0, x=0, pd_z=0, pe_z=0    neutro
+#   2) roll=+14, x=0, pd_z=0, pe_z=0    peso à direita (PE ainda no chão)
+#   3) roll=+14, x=0, pd_z=0, pe_z=15   PE no ar
+#   4) roll=+14, x=0, pd_z=0, pe_z=0    PE pousa (roll ainda positivo)
+#   5) roll=  0, x=0, pd_z=0, pe_z=0    neutro
+#   6) roll=-14, x=0, pd_z=0, pe_z=0    peso à esquerda (PD ainda no chão)
+#   7) roll=-14, x=0, pd_z=15, pe_z=0   PD no ar
+#   8) roll=-14, x=0, pd_z=0, pe_z=0    PD pousa (roll ainda negativo)
+# =====================================================================
+
+passo: 0.3
+pausa: 0.1
+# Duracao e pausa POR COLUNA (opcional): neutro (1,5) 0.30s/0.10s, peso
+# (2,6) 0.25s/0.05s, voo (3,7) 0.30s/0s, pouso (4,8) 0.25s/0.10s.
+passos: [0.30, 0.25, 0.30, 0.25, 0.30, 0.25, 0.30, 0.25]
+pausas: [0.10, 0.05, 0.00, 0.10, 0.10, 0.05, 0.00, 0.10]
+
+nomes_juntas:
+  - pd_roll_tornozelo_1
+  - pe_roll_tornozelo_2
+  - pd_picht_tornozelo_3
+  - pe_picht_tornozelo_4
+  - pd_picht_joelho_5
+  - pe_picht_joelho_6
+  - pd_picht_quadril_7
+  - pe_pich_quadril_8
+  - pd_roll_quadril_9
+  - pe_roll_quadril_10
+
+matriz_movimento:
+  - [  0.000000, -0.244346, -0.244346, -0.244346,  0.000000,  0.244346,  0.244346,  0.244346 ]  # pd_roll_tornozelo_1
+  - [  0.000000, -0.244346, -0.244346, -0.244346,  0.000000,  0.244346,  0.244346,  0.244346 ]  # pe_roll_tornozelo_2
+  - [ -0.742400, -0.742400, -0.742400, -0.742400, -0.742400, -0.742400, -0.950833, -0.742400 ]  # pd_picht_tornozelo_3
+  - [  0.517900,  0.517900,  0.696185,  0.517900,  0.517900,  0.517900,  0.517900,  0.517900 ]  # pe_picht_tornozelo_4
+  - [  1.250900,  1.250900,  1.250900,  1.250900,  1.250900,  1.250900,  1.636192,  1.250900 ]  # pd_picht_joelho_5
+  - [ -1.269200, -1.269200, -1.650986, -1.269200, -1.269200, -1.269200, -1.269200, -1.269200 ]  # pe_picht_joelho_6
+  - [ -0.595766, -0.595766, -0.595766, -0.595766, -0.595766, -0.595766, -0.772625, -0.595766 ]  # pd_picht_quadril_7
+  - [  0.838566,  0.838566,  1.042067,  0.838566,  0.838566,  0.838566,  0.838566,  0.838566 ]  # pe_pich_quadril_8
+  - [  0.000000, -0.244346, -0.244346, -0.244346,  0.000000,  0.244346,  0.244346,  0.244346 ]  # pd_roll_quadril_9
+  - [  0.000000, -0.244346, -0.244346, -0.244346,  0.000000,  0.244346,  0.244346,  0.244346 ]  # pe_roll_quadril_10
