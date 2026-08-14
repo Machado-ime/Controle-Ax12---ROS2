@@ -1,12 +1,20 @@
-"""Interface de hardware ROS 2 para servomotores Dynamixel AX-12.
+"""Interface de hardware ROS 2 para servomotores Dynamixel AX-12 e MX-28.
 
 Este nó é o ÚNICO processo que toca o barramento serial dos motores.
 Ele assina /joint_trajectory (posições em rad, velocidades em rad/s),
-converte para as unidades do AX-12 e escreve tudo num único pacote
+converte para as unidades do motor de CADA junta (AX-12 ou MX-28 —
+resoluções diferentes, ver MODELOS) e escreve tudo num único pacote
 SyncWrite. Falhas de hardware são publicadas em /hardware_errors.
 
-Referência da tabela de controle do AX-12:
+Os dois modelos falam Protocolo 1.0 e usam os MESMOS endereços de
+tabela de controle (Torque Enable=24, Goal Position=30, Moving
+Speed=32, Present Position=36) — só a escala de posição/velocidade
+muda, por isso a conversão rad<->unidades é parametrizada por modelo
+em vez de constante global.
+
+Referências das tabelas de controle:
 https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
+https://emanual.robotis.com/docs/en/dxl/mx/mx-28/
 """
 
 import math
@@ -16,7 +24,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, qos_profile_sensor_data
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
-from sensor_msgs.msg import JointState
+from sensor_msgs.msg import Imu, JointState
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory
 
@@ -54,17 +62,58 @@ LEN_GOAL_POS_E_SPEED    = 4
 ADDR_PRESENT_POSITION   = 36
 LEN_BLOCO_TELEMETRIA    = 8
 
-# O AX-12 NÃO tem sensor de torque verdadeiro: o Present Load (end. 40)
-# é a estimativa interna do esforço, em % do torque máximo. Convertemos
-# para N·m usando o stall torque nominal (~1,5 N·m a 12 V) — aproximação.
-TORQUE_MAX_NM           = 1.5
+# Nem AX-12 nem MX-28 têm sensor de torque verdadeiro: o Present Load
+# (end. 40) é a estimativa interna do esforço, em % do torque máximo.
+# Convertemos para N·m usando o stall torque nominal de CADA modelo
+# (aproximação) — ver 'torque_max_nm' em MODELOS.
 
 # =====================================================================
-# Fatores de conversão (unidades do ROS <-> unidades do AX-12)
+# Fatores de conversão (unidades do ROS <-> unidades do motor), POR
+# MODELO — AX-12 é 0-1023 sobre 300° (curso útil ±150°); MX-28 é
+# 0-4095 sobre 360° (curso útil ±180°). Ambos protocolo 1.0, mesmos
+# endereços de tabela de controle (só a escala muda).
 # =====================================================================
-LIMITE_RAD          = 2.618                       # ±150° (curso útil do AX-12)
-POS_POR_RAD         = 1023.0 / (2 * LIMITE_RAD)   # rad -> unidades de posição
-UNIDADES_POR_RAD_S  = 86.03                       # rad/s -> unidades (1 un. = 0,111 rpm)
+LIMITE_RAD = 2.618   # mantido para retrocompatibilidade (default = AX-12)
+
+MODELOS = {
+    'AX12': dict(
+        limite_rad=2.618,             # ±150° (curso útil 0-300°)
+        max_pos=1023,
+        unidades_por_rad_s=86.03,     # rad/s -> unidades (1 un. = 0,111 rpm)
+        torque_max_nm=1.5,            # stall torque nominal a 12 V
+    ),
+    'MX28': dict(
+        limite_rad=math.pi,           # ±180° (curso útil 0-360°)
+        max_pos=4095,
+        unidades_por_rad_s=83.76,     # rad/s -> unidades (1 un. = 0,114 rpm)
+        torque_max_nm=2.5,            # stall torque nominal a 12 V
+    ),
+}
+for _cfg in MODELOS.values():
+    _cfg['pos_por_rad'] = _cfg['max_pos'] / (2 * _cfg['limite_rad'])
+del _cfg
+
+# Compatibilidade com o restante do arquivo (default AX-12)
+POS_POR_RAD         = MODELOS['AX12']['pos_por_rad']
+UNIDADES_POR_RAD_S  = MODELOS['AX12']['unidades_por_rad_s']
+
+# =====================================================================
+# OpenCR como dispositivo no barramento (firmware opencr_dxl_imu_bridge,
+# em src/ax12_control/firmware/) — padrao do ROBOTIS OP3: o OpenCR
+# responde no ID 200 com uma tabela de controle propria contendo o IMU.
+# Bloco contiguo 30..49: button(1) + voltage(1) + gyro xyz(6) +
+# acc xyz(6) + roll/pitch/yaw(6) — lido numa UNICA transacao.
+# =====================================================================
+OPENCR_ID             = 200
+ADDR_OPENCR_BLOCO     = 30
+LEN_OPENCR_BLOCO      = 20
+ADDR_OPENCR_DXL_POWER = 24   # RW: 0/1 liga-desliga o rail 12V dos motores
+
+# Fatores de conversao — os MESMOS do open_cr_module oficial do OP3
+GYRO_GRAUS_S_POR_LSB = 2000.0 / 32800.0   # int16 cru -> graus/s
+ACC_G_POR_LSB        = 2.0 / 32768.0      # int16 cru -> g
+RPY_GRAUS_POR_LSB    = 0.1                # int16 -> graus (firmware manda deg*10)
+G_PARA_M_S2          = 9.80665
 
 
 class AX12HardwareInterface(Node):
@@ -80,6 +129,11 @@ class AX12HardwareInterface(Node):
         self.declare_parameter('max_falhas_reconexao', 10)  # desiste após N reconexões falhas
         self.declare_parameter('velocidade_padrao', 100)    # usada se a msg vier sem velocities
         self.declare_parameter('taxa_leitura', 5.0)         # Hz da telemetria (0 desliga)
+        # IMU do OpenCR (ID 200): exige o firmware opencr_dxl_imu_bridge
+        # gravado na placa. 0 = desligado (padrao, seguro com o usb_to_dxl
+        # antigo, que nao responde no ID 200).
+        self.declare_parameter('taxa_imu', 0.0)             # Hz da leitura do IMU
+        self.declare_parameter('imu_frame_id', 'imu_link')
 
         self.device = self.get_parameter('device').value
         self.baudrate = self.get_parameter('baudrate').value
@@ -92,9 +146,9 @@ class AX12HardwareInterface(Node):
         # barramento (ex.: pd_picht_tornozelo_3 é o motor de ID 12).
         # O ID que vale é sempre o número à direita.
         self.joint_map = {
-            'pd_picht_tornozelo_3': 12,
+            'pd_picht_tornozelo_3': 12,  # MX-28 (trocado; era AX-12)
             'pe_picht_tornozelo_4': 17,
-            'pd_roll_tornozelo_1': 13,   # ativos, mas fora da marcha atual:
+            'pd_roll_tornozelo_1': 13,   # MX-28 (trocado; manteve o ID do AX-12 anterior)
             'pe_roll_tornozelo_2': 18,   # recebem torque e seguram a posição
             'pd_picht_joelho_5': 11,
             'pe_picht_joelho_6': 16,
@@ -108,6 +162,14 @@ class AX12HardwareInterface(Node):
             # mesmo motor físico).
         }
         self.active_ids = list(self.joint_map.values())
+
+        # Modelo do motor por junta — só as trocadas por MX-28 aparecem aqui;
+        # qualquer junta ausente é AX-12 por padrão (ver MODELOS acima).
+        # Atualize junto com joint_map sempre que trocar mais motores.
+        self.joint_model = {
+            'pd_picht_tornozelo_3': 'MX28',
+            'pd_roll_tornozelo_1': 'MX28',
+        }
 
         # Limites de posição por junta (rad) medidos no hardware e convertidos via:
         #   rad = (grau_AX12 - 150) * pi/180
@@ -207,6 +269,14 @@ class AX12HardwareInterface(Node):
         taxa = self.get_parameter('taxa_leitura').value
         if taxa > 0:
             self.create_timer(1.0 / taxa, self.ler_motores_callback)
+
+        # 5. Timer do IMU do OpenCR (taxa_imu = 0 desliga; ver parametro)
+        taxa_imu = self.get_parameter('taxa_imu').value
+        if taxa_imu > 0:
+            self.imu_publisher = self.create_publisher(
+                Imu, '/imu/data', qos_profile_sensor_data)
+            self._falhas_imu = 0
+            self.create_timer(1.0 / taxa_imu, self.ler_imu_callback)
 
     # =================================================================
     # FUNÇÕES DE APOIO (conexão, torque e avisos de erro)
@@ -354,9 +424,11 @@ class AX12HardwareInterface(Node):
             if joint_name not in self.joint_map:
                 continue
             dxl_id = self.joint_map[joint_name]
+            modelo = MODELOS[self.joint_model.get(joint_name, 'AX12')]
 
             # --- CLAMP POR JUNTA (limites mecânicos do URDF) ---
-            low, high = self.joint_limits.get(joint_name, (-LIMITE_RAD, LIMITE_RAD))
+            low, high = self.joint_limits.get(
+                joint_name, (-modelo['limite_rad'], modelo['limite_rad']))
             cmd_rad = point.positions[i]
             rads = max(low, min(high, cmd_rad))
             if abs(rads - cmd_rad) > 1e-4:
@@ -368,14 +440,14 @@ class AX12HardwareInterface(Node):
             # motor trocando o sinal (o clamp acima já usou os limites do URDF).
             rads_motor = -rads if joint_name in self.juntas_invertidas else rads
 
-            # --- CONVERSÃO DE POSIÇÃO (rad -> 0 a 1023) ---
-            goal_pos = round((rads_motor + LIMITE_RAD) * POS_POR_RAD)
-            goal_pos = max(0, min(1023, goal_pos))
+            # --- CONVERSÃO DE POSIÇÃO (rad -> unidades do modelo do motor) ---
+            goal_pos = round((rads_motor + modelo['limite_rad']) * modelo['pos_por_rad'])
+            goal_pos = max(0, min(modelo['max_pos'], goal_pos))
 
             # --- CONVERSÃO DE VELOCIDADE (rad/s -> 1 a 1023) ---
-            # Mínimo 1, porque 0 significa "velocidade máxima" no AX-12!
+            # Mínimo 1, porque 0 significa "velocidade máxima" no motor!
             if tem_velocidades:
-                velocidade = round(abs(point.velocities[i]) * UNIDADES_POR_RAD_S)
+                velocidade = round(abs(point.velocities[i]) * modelo['unidades_por_rad_s'])
             else:
                 velocidade = self.velocidade_padrao
             velocidade = max(1, min(1023, velocidade))
@@ -436,6 +508,7 @@ class AX12HardwareInterface(Node):
                         f'a leitura ha {falhas} ciclos seguidos.')
                 continue
             self._falhas_leitura[dxl_id] = 0
+            modelo = MODELOS[self.joint_model.get(joint_name, 'AX12')]
 
             # --- Conversões (inverso das fórmulas de escrita) ---
             pos_raw = DXL_MAKEWORD(dados[0], dados[1])
@@ -444,10 +517,10 @@ class AX12HardwareInterface(Node):
             tensao = dados[6] / 10.0        # ex.: 119 -> 11,9 V
             temperatura = float(dados[7])   # já vem em °C
 
-            pos_rad = (pos_raw / POS_POR_RAD) - LIMITE_RAD
+            pos_rad = (pos_raw / modelo['pos_por_rad']) - modelo['limite_rad']
 
             # Velocidade e carga usam 10 bits + bit de direção (>=1024 = horário)
-            vel_rad_s = (vel_raw & 0x3FF) / UNIDADES_POR_RAD_S
+            vel_rad_s = (vel_raw & 0x3FF) / modelo['unidades_por_rad_s']
             if vel_raw >= 1024:
                 vel_rad_s = -vel_rad_s
 
@@ -461,7 +534,7 @@ class AX12HardwareInterface(Node):
             carga_pct = (carga_raw & 0x3FF) / 10.23   # % do torque máximo
             if carga_raw >= 1024:
                 carga_pct = -carga_pct
-            torque_nm = carga_pct / 100.0 * TORQUE_MAX_NM  # estimativa!
+            torque_nm = carga_pct / 100.0 * modelo['torque_max_nm']  # estimativa!
 
             # --- Monta o /joint_states (padrão ROS: rad, rad/s, N·m) ---
             js.name.append(joint_name)
@@ -506,6 +579,77 @@ class AX12HardwareInterface(Node):
         if js.name:
             self.joint_state_publisher.publish(js)
             self.diagnostics_publisher.publish(diag)
+
+    # =================================================================
+    # LEITURA DO IMU (OpenCR no ID 200 — firmware opencr_dxl_imu_bridge)
+    # =================================================================
+
+    @staticmethod
+    def _int16(lo, hi):
+        """Junta 2 bytes little-endian num int16 COM sinal."""
+        v = lo | (hi << 8)
+        return v - 65536 if v >= 32768 else v
+
+    def ler_imu_callback(self):
+        """Le o bloco de IMU do OpenCR e publica sensor_msgs/Imu.
+
+        Roda no mesmo thread dos comandos e da telemetria (o rclpy executa
+        um callback de cada vez), entao nunca disputa a serial com eles.
+        """
+        if self.desativado or not self.port_ok:
+            return
+
+        try:
+            dados, result, error = self.packetHandler.readTxRx(
+                self.portHandler, OPENCR_ID,
+                ADDR_OPENCR_BLOCO, LEN_OPENCR_BLOCO)
+        except (serial.SerialException, OSError):
+            self._porta_caiu('durante a leitura do IMU')
+            return
+
+        if result != COMM_SUCCESS:
+            # OpenCR mudo no ID 200: firmware antigo (usb_to_dxl) ou falha.
+            # Avisa so quando virar rotina, como na telemetria dos motores.
+            self._falhas_imu += 1
+            if self._falhas_imu == 25:
+                self._avisar_erro(
+                    'OpenCR (ID 200) sem responder a leitura do IMU ha '
+                    f'{self._falhas_imu} ciclos. O firmware '
+                    'opencr_dxl_imu_bridge esta gravado na placa?')
+            return
+        self._falhas_imu = 0
+
+        # Bloco 30..49: button(1) volt(1) gyro(6) acc(6) rpy(6)
+        gyro = [self._int16(dados[2 + 2 * i], dados[3 + 2 * i]) for i in range(3)]
+        acc = [self._int16(dados[8 + 2 * i], dados[9 + 2 * i]) for i in range(3)]
+        rpy = [self._int16(dados[14 + 2 * i], dados[15 + 2 * i]) for i in range(3)]
+
+        # Conversoes (mesmos fatores do open_cr_module do OP3)
+        gyro_rad_s = [math.radians(v * GYRO_GRAUS_S_POR_LSB) for v in gyro]
+        acc_m_s2 = [v * ACC_G_POR_LSB * G_PARA_M_S2 for v in acc]
+        roll, pitch, yaw = (math.radians(v * RPY_GRAUS_POR_LSB) for v in rpy)
+
+        # Euler (ZYX) -> quaternion
+        cr, sr = math.cos(roll / 2), math.sin(roll / 2)
+        cp, sp = math.cos(pitch / 2), math.sin(pitch / 2)
+        cy, sy = math.cos(yaw / 2), math.sin(yaw / 2)
+
+        msg = Imu()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = self.get_parameter('imu_frame_id').value
+        msg.orientation.w = cr * cp * cy + sr * sp * sy
+        msg.orientation.x = sr * cp * cy - cr * sp * sy
+        msg.orientation.y = cr * sp * cy + sr * cp * sy
+        msg.orientation.z = cr * cp * sy - sr * sp * cy
+        (msg.angular_velocity.x, msg.angular_velocity.y,
+         msg.angular_velocity.z) = gyro_rad_s
+        (msg.linear_acceleration.x, msg.linear_acceleration.y,
+         msg.linear_acceleration.z) = acc_m_s2
+        # Covariancias desconhecidas (sensor sem especificacao formal):
+        # -1 no primeiro elemento e a convencao ROS para "nao disponivel"
+        # apenas na orientation se nao houvesse estimativa; aqui ha RPY do
+        # filtro do firmware, entao deixamos 0 (desconhecida, mas valida).
+        self.imu_publisher.publish(msg)
 
     # =================================================================
     # ENCERRAMENTO SEGURO

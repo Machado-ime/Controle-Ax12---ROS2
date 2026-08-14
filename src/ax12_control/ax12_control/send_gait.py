@@ -198,6 +198,61 @@ def carregar_marcha(caminho):
     return nomes_juntas, matriz, passo, pausa
 
 
+def carregar_pausas(caminho, num_points, pausa_padrao):
+    """Lê a chave OPCIONAL 'pausas' (lista, 1 valor por coluna) do YAML.
+
+    Ausente -> todas as colunas usam 'pausa_padrao' (comportamento de
+    sempre, matrizes existentes não precisam mudar). Presente -> permite
+    pausa diferente por coluna (ex.: só nas colunas de pouso de um passo),
+    e precisa ter exatamente 'num_points' valores.
+    """
+    with open(caminho, 'r', encoding='utf-8') as f:
+        dados = yaml.safe_load(f)
+
+    pausas = dados.get('pausas')
+    if pausas is None:
+        return [pausa_padrao] * num_points
+
+    if not isinstance(pausas, list) or len(pausas) != num_points:
+        raise ValueError(
+            f'"pausas" deve ter {num_points} valores (1 por coluna da '
+            f'matriz); veio {pausas!r}.')
+
+    pausas = [float(p) for p in pausas]
+    for i, p in enumerate(pausas):
+        if p < 0:
+            raise ValueError(f'"pausas"[{i}] nao pode ser negativa (veio {p}).')
+    return pausas
+
+
+def carregar_passos(caminho, num_points, passo_padrao):
+    """Lê a chave OPCIONAL 'passos' (lista, 1 valor por coluna) do YAML —
+    duração de movimento por coluna, análogo a 'carregar_pausas'.
+
+    Ausente -> todas as colunas usam 'passo_padrao' (comportamento de
+    sempre). Presente -> permite duração diferente por coluna (ex.: etapas
+    de voo mais longas que as de peso), precisa ter exatamente
+    'num_points' valores, todos > 0 (mesma regra do 'passo' escalar).
+    """
+    with open(caminho, 'r', encoding='utf-8') as f:
+        dados = yaml.safe_load(f)
+
+    passos = dados.get('passos')
+    if passos is None:
+        return [passo_padrao] * num_points
+
+    if not isinstance(passos, list) or len(passos) != num_points:
+        raise ValueError(
+            f'"passos" deve ter {num_points} valores (1 por coluna da '
+            f'matriz); veio {passos!r}.')
+
+    passos = [float(p) for p in passos]
+    for i, p in enumerate(passos):
+        if p <= 0:
+            raise ValueError(f'"passos"[{i}] deve ser maior que zero (veio {p}).')
+    return passos
+
+
 def calcular_velocidade_rad_s(rad_alvo, rad_anterior, passo):
     """Velocidade para cobrir a distância no tempo 'passo' (rad/s).
 

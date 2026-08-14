@@ -16,23 +16,47 @@ src/
 │   ├── launch/
 │   │   ├── visualizar_marcha.launch.py
 │   │   ├── controle_manual.launch.py
-│   │   └── marcha_manual.launch.py
-│   └── ax12_control/             # módulo Python (mesmo nome = convenção ament_python)
-│       ├── __init__.py
-│       ├── ax12_controller.py
-│       ├── send_gait.py
-│       ├── ax12_monitor.py
-│       ├── visualizar_marcha.py
-│       ├── passo_slider.py
-│       ├── controle_manual.py
-│       ├── marcha_manual.py
-│       ├── gait_bridge.py
-│       ├── adam.rviz
-│       ├── otimizada.yaml
-│       ├── cin_inve.yaml
-│       ├── cin_inve_roll.yaml
-│       ├── matriz_zmp.yaml
-│       └── cin_inve_2.yaml
+│   │   ├── marcha_manual.launch.py
+│   │   ├── medir_roll.launch.py
+│   │   └── controle_pe.launch.py
+│   ├── ax12_control/             # módulo Python (mesmo nome = convenção ament_python)
+│   │   ├── __init__.py
+│   │   ├── ax12_controller.py
+│   │   ├── send_gait.py
+│   │   ├── ax12_monitor.py
+│   │   ├── visualizar_marcha.py
+│   │   ├── passo_slider.py
+│   │   ├── controle_manual.py
+│   │   ├── marcha_manual.py
+│   │   ├── marcha_continua.py
+│   │   ├── medir_roll.py
+│   │   ├── controle_pe.py
+│   │   ├── gait_bridge.py
+│   │   ├── adam.rviz
+│   │   ├── otimizada.yaml
+│   │   ├── cin_inve.yaml
+│   │   ├── cin_inve_roll.yaml
+│   │   ├── matriz_zmp.yaml
+│   │   ├── cin_inve_2.yaml
+│   │   ├── teste_equilibrio.yaml
+│   │   ├── marcha_pe.yaml
+│   │   ├── marcha_avanco.yaml
+│   │   └── marcha_avanco_suave.yaml
+│   ├── scripts/                  # utilitários offline (NÃO são nós ROS, rodam com `python3`)
+│   │   ├── cabecalho.txt         # cabeçalho colado pelo gerar_mega_matriz.py
+│   │   ├── converter_matriz_lugar.py
+│   │   ├── gerar_marcha_pe.py
+│   │   ├── gerar_mega_matriz.py
+│   │   ├── teste_motores.py
+│   │   └── validacao_ik/         # bateria de validação FK/IK do controle_pe
+│   │       ├── altura_quadril.py
+│   │       ├── ik_harness.py
+│   │       ├── teste_x_trim.py
+│   │       └── verificar_x_pes.py
+│   └── firmware/                 # firmware embarcado (Arduino IDE — NÃO é pacote ROS)
+│       ├── opencr_dxl_imu_bridge/
+│       │   └── opencr_dxl_imu_bridge.ino
+│       └── opencr_hurocup/       # 32 arquivos — port do firmware STM32 do HuroCup p/ OpenCR
 │
 ├── adam_urdf/                    # pacote: URDF, meshes e launch files do robô
 │   ├── package.xml
@@ -84,10 +108,45 @@ marcha mora aqui. Documentação aprofundada: [docs/arquitetura.md](../docs/arqu
 | `passo_slider.py` | Janela Qt com slider/botões para escolher manualmente a etapa da marcha no RViz |
 | `controle_manual.py` | Janela Qt com um slider por junta — jog manual dos motores reais via `/joint_trajectory`, com o RViz espelhando a posição real (telemetria do `ax12_controller`) |
 | `marcha_manual.py` | Janela Qt com slider/botões para escolher a coluna da matriz de marcha — o robô real vai à pose da etapa escolhida e o RViz espelha a posição real (une `visualizar_marcha` + `controle_manual`) |
+| `marcha_continua.py` | Roda uma marcha em ciclo contínuo no robô real: ao iniciar vai pra coluna 1 e espera o play, depois repete o ciclo (coluna 2, 3, ..., volta pra 1) — reaproveita `ConexaoRobo`/`carregar_marcha` do `send_gait.py` |
+| `medir_roll.py` | Janela Qt com UM slider que comanda as 4 juntas de roll juntas (pitchs fixos na coluna 1 da matriz) — mede no robô real o ângulo de roll necessário para transferir o peso entre as pernas |
+| `controle_pe.py` | Janela Qt com IK cartesiana do pé: 5 sliders (roll central, X da passada em oposição dir/esq, Z de cada pé, trim de quadril) resolvidos por Newton sobre a FK exata do URDF, sempre com o pé paralelo ao chão. Botão "Exportar coluna" imprime os 10 ângulos prontos para colar numa matriz YAML |
 | `gait_bridge.py` | Ponte entre `send_gait` (QoS BEST_EFFORT) e os `JointTrajectoryController` do `adam_urdf`/MoveIt2 (QoS RELIABLE) |
 | `otimizada.yaml`, `cin_inve.yaml`, `cin_inve_roll.yaml`, `matriz_zmp.yaml`, `cin_inve_2.yaml` | Marchas prontas — detalhes de cada uma em [docs/arquitetura.md](../../docs/arquitetura.md#marchas-disponíveis) |
+| `teste_equilibrio.yaml` | Balanço NO LUGAR (8 etapas) gerado pela IK do `controle_pe`: X=0 em todas as colunas, só transferência de peso lateral (roll) + levantar cada pé, em colunas separadas |
+| `marcha_pe.yaml` | Marcha (4 etapas) gerada pela IK do `controle_pe`: roll e levantamento do pé de balanço acontecem JUNTOS na mesma coluna, trim de quadril −9° |
+| `marcha_avanco.yaml` | Marcha (8 etapas) — mesmos parâmetros da `teste_equilibrio` (roll ±16°, trim −7°) adicionando avanço X=±10mm |
+| `marcha_avanco_suave.yaml` | A `marcha_avanco` expandida em "mega matriz" por rampa cosseno entre colunas (gerada por `scripts/gerar_mega_matriz.py`) — movimento contínuo em vez de 8 saltos discretos |
 | `adam.rviz` | Config do RViz usada por `visualizar_marcha.launch.py` |
 | `package.xml` / `setup.py` / `setup.cfg` / `resource/` | Metadados do pacote (dependências, `console_scripts`, instalação) |
+
+### `ax12_control/scripts/` — utilitários offline (sem ROS)
+
+Rodam com `python3` puro — não são nós, não usam `ros2 run` — mas dependem do pacote
+**instalado** (`colcon build` + `source install/setup.bash`), porque importam
+`ax12_control.controle_pe`/`send_gait` para reaproveitar a mesma FK/IK e os mesmos
+carregadores de matriz usados no robô real.
+
+| Arquivo | Função |
+|---|---|
+| `gerar_mega_matriz.py` | Expande a `marcha_avanco` numa "mega matriz" (`marcha_avanco_suave`) por rampa cosseno entre colunas consecutivas |
+| `gerar_marcha_pe.py` | Gera a `marcha_pe.yaml` resolvendo cada coluna pela mesma IK do `controle_pe.aplicar()` |
+| `converter_matriz_lugar.py` | Converte uma tabela em graus (gerada externamente) para radianos e valida contra os limites de `controle_pe.py` |
+| `teste_motores.py` | PING em cada motor esperado do projeto, direto por serial + `dynamixel_sdk` (sem ROS) — diagnóstico rápido de quais motores respondem |
+| `validacao_ik/ik_harness.py` | Valida a IK do `controle_pe` contra a FK exata do URDF: reproduz a coluna 1, varre a grade completa dos sliders (erro < 1mm, pé plano, dentro dos limites) |
+| `validacao_ik/teste_x_trim.py` | Valida a combinação X (oposição dir/esq) + trim de quadril em toda a faixa dos sliders |
+| `validacao_ik/verificar_x_pes.py` | Audita uma matriz já gerada: imprime o X (via FK) do tornozelo de cada perna em cada coluna, pra conferir a simetria dir/esq |
+| `validacao_ik/altura_quadril.py` | Calcula a altura do quadril acima do pé na postura base — a referência física por trás do Z=0 do `controle_pe` |
+
+### `ax12_control/firmware/` — firmware embarcado (não é pacote ROS)
+
+Sketches Arduino, compilados e gravados pela Arduino IDE (placa **OpenCR**) — não passam
+pelo `colcon`/`ros2`.
+
+| Pasta | Função |
+|---|---|
+| `opencr_dxl_imu_bridge/` | Bridge USB↔DXL transparente (compatível com o DYNAMIXEL Wizard) que também expõe a IMU da OpenCR como um dispositivo Protocol 1.0 no endereço 200, no estilo do firmware `opencr_op3` da ROBOTIS |
+| `opencr_hurocup/` | Port completo (32 arquivos) do firmware STM32 do projeto HuroCup para a OpenCR (STM32F746): mesma lógica pura do original (stream de posições das juntas, estabilização por IMU, soft-start, safety), camadas de hardware (IMU, bateria, half-duplex DXL, bootflag, systick) reescritas para o core Arduino da OpenCR. **Nunca compilado** — falta validar na Arduino IDE antes de gravar |
 
 ### `adam_urdf/` — modelo do robô
 
@@ -133,6 +192,7 @@ ros2 run ax12_control ax12_controller   # Raspberry Pi — liga o torque e fala 
 ros2 run ax12_control send_gait         # PC de comando — envia uma marcha
 ros2 run ax12_control ax12_monitor      # PC de comando — telemetria no terminal
 ros2 run ax12_control gait_bridge       # PC de comando — ponte para ros2_control/MoveIt2
+ros2 run ax12_control marcha_continua --ros-args -p matriz:=marcha_pe   # ciclo continuo no robo real
 ```
 
 **`ax12_control` — launch (visualização sem hardware):**
@@ -154,6 +214,40 @@ ros2 launch ax12_control controle_manual.launch.py device:=/dev/ttyUSB0 velocida
 ros2 launch ax12_control marcha_manual.launch.py                    # matriz otimizada
 ros2 launch ax12_control marcha_manual.launch.py matriz:=cin_inve
 ```
+
+**`ax12_control` — launch (medir roll: 1 slider comanda as 4 juntas de roll no robô real + RViz):**
+
+```bash
+ros2 launch ax12_control medir_roll.launch.py
+ros2 launch ax12_control medir_roll.launch.py matriz:=matriz_zmp velocidade:=0.3
+```
+
+**`ax12_control` — launch (IK cartesiana do pé: roll + X/Z por perna no robô real + RViz):**
+
+```bash
+ros2 launch ax12_control controle_pe.launch.py
+ros2 launch ax12_control controle_pe.launch.py matriz:=matriz_zmp velocidade:=0.3
+```
+
+**`ax12_control/scripts/` — utilitários offline (sem `ros2 run`; precisam do workspace buildado e sourced):**
+
+```bash
+python3 src/ax12_control/scripts/gerar_mega_matriz.py
+python3 src/ax12_control/scripts/gerar_marcha_pe.py
+python3 src/ax12_control/scripts/converter_matriz_lugar.py
+python3 src/ax12_control/scripts/teste_motores.py /dev/ttyACM0
+python3 src/ax12_control/scripts/validacao_ik/ik_harness.py
+python3 src/ax12_control/scripts/validacao_ik/teste_x_trim.py
+python3 src/ax12_control/scripts/validacao_ik/verificar_x_pes.py marcha_avanco
+python3 src/ax12_control/scripts/validacao_ik/altura_quadril.py
+```
+
+**`ax12_control/firmware/` — não usa `colcon`/`ros2`:**
+
+Abrir o `.ino` (`opencr_hurocup/opencr_hurocup.ino` ou `opencr_dxl_imu_bridge/opencr_dxl_imu_bridge.ino`)
+na Arduino IDE com o board package da OpenCR instalado, selecionar a placa OpenCR e usar
+Verify/Upload. Não há comando de linha de comando validado nesta sessão (`arduino-cli` não
+estava disponível no PATH).
 
 **`adam_urdf` — launch:**
 

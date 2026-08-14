@@ -57,19 +57,26 @@ Controle-Ax12---ROS2/
 │   │   ├── launch/
 │   │   │   ├── visualizar_marcha.launch.py
 │   │   │   ├── controle_manual.launch.py
-│   │   │   └── marcha_manual.launch.py
-│   │   └── ax12_control/      # módulo Python (nome repetido = convenção ament_python)
-│   │       ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
-│   │       ├── send_gait.py         # gerador de marcha (PC de comando)
-│   │       ├── ax12_monitor.py      # painel de telemetria no terminal (PC)
-│   │       ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
-│   │       ├── passo_slider.py      # janela Qt p/ escolher a etapa da marcha manualmente
-│   │       ├── controle_manual.py   # janela Qt: jog manual dos motores reais + RViz junto
-│   │       ├── marcha_manual.py     # janela Qt: escolhe coluna da matriz -> robô real + RViz
-│   │       ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2, MoveIt)
-│   │       ├── adam.rviz            # config RViz pré-configurado para o Adam
-│   │       ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
-│   │       └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
+│   │   │   ├── marcha_manual.launch.py
+│   │   │   ├── medir_roll.launch.py
+│   │   │   └── controle_pe.launch.py
+│   │   ├── ax12_control/      # módulo Python (nome repetido = convenção ament_python)
+│   │   │   ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
+│   │   │   ├── send_gait.py         # gerador de marcha (PC de comando)
+│   │   │   ├── ax12_monitor.py      # painel de telemetria no terminal (PC)
+│   │   │   ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
+│   │   │   ├── passo_slider.py      # janela Qt p/ escolher a etapa da marcha manualmente
+│   │   │   ├── controle_manual.py   # janela Qt: jog manual dos motores reais + RViz junto
+│   │   │   ├── marcha_manual.py     # janela Qt: escolhe coluna da matriz -> robô real + RViz
+│   │   │   ├── marcha_continua.py   # ciclo contínuo da marcha no robô real
+│   │   │   ├── medir_roll.py        # janela Qt: 1 slider -> as 4 juntas de roll
+│   │   │   ├── controle_pe.py       # janela Qt: IK cartesiana do pé (roll + X/Z por perna)
+│   │   │   ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2, MoveIt)
+│   │   │   ├── adam.rviz            # config RViz pré-configurado para o Adam
+│   │   │   ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
+│   │   │   └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
+│   │   ├── scripts/             # utilitários offline (sem ROS) + validacao_ik/
+│   │   └── firmware/            # firmware Arduino da OpenCR (opencr_hurocup, opencr_dxl_imu_bridge)
 │   ├── adam_urdf/               # pacote ROS (ament_cmake): URDF, meshes e launch do Adam
 │   └── adam_moveit_config/     # pacote MoveIt2 gerado p/ planejamento de movimento
 └── docs/
@@ -95,12 +102,16 @@ Controle-Ax12---ROS2/
 | `visualizar_marcha` + `passo_slider` | PC de comando | Digital twin no RViz sem hardware |
 | `controle_manual` | Raspberry Pi | Jog manual por slider — move o motor real e o RViz ao mesmo tempo (RViz via telemetria real do `ax12_controller`) |
 | `marcha_manual` | Raspberry Pi | Escolhe a coluna da matriz de marcha por slider — robô real vai à pose da etapa e o RViz espelha (une `visualizar_marcha` + `controle_manual`) |
+| `marcha_continua` | Raspberry Pi | Roda uma marcha em ciclo contínuo no robô real (vai à coluna 1, espera o play, repete o ciclo) |
+| `medir_roll` | Raspberry Pi | 1 slider comanda as 4 juntas de roll juntas — mede o ângulo necessário para transferir o peso entre as pernas |
+| `controle_pe` | Raspberry Pi | IK cartesiana do pé: roll central + X/Z de cada pé por slider, pé sempre paralelo ao chão; exporta coluna pronta para YAML |
 | `gait_bridge` | PC de comando | Ponte para `ros2_control`/MoveIt2 (pacotes `adam_urdf`/`adam_moveit_config`, em `src/`) |
 
 | Tópico | Tipo | QoS |
 |---|---|---|
 | `/joint_trajectory` | `trajectory_msgs/JointTrajectory` | BEST_EFFORT / depth 1 |
 | `/joint_states` | `sensor_msgs/JointState` | BEST_EFFORT |
+| `/imu/data` | `sensor_msgs/Imu` | BEST_EFFORT — só com `taxa_imu` > 0 (lê o bloco de registro 200 da OpenCR) |
 | `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | RELIABLE |
 | `/hardware_errors` | `std_msgs/String` | RELIABLE |
 
