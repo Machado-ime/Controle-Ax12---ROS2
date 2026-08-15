@@ -6,6 +6,36 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Removido
+- `src/ax12_control/firmware/` — os dois sketches Arduino para a placa OpenCR
+  (`opencr_dxl_imu_bridge/`, `opencr_hurocup/`, 33 arquivos). Não passavam pelo `colcon`/`ros2`
+  e nenhum código Python importava deles. O comentário em `ax12_controller.py` que apontava
+  para `src/ax12_control/firmware/` (contexto do bloco IMU do OpenCR no ID 200) foi atualizado
+  para não referenciar mais um caminho do repositório — a leitura de `/imu/data`
+  (`taxa_imu` > 0) continua funcionando normalmente se a placa já tiver o firmware
+  `opencr_dxl_imu_bridge` gravado; só a fonte desse firmware não mora mais aqui.
+- Todas as 9 matrizes de marcha (`otimizada.yaml`, `cin_inve.yaml`, `cin_inve_roll.yaml`,
+  `matriz_zmp.yaml`, `cin_inve_2.yaml`, `teste_equilibrio.yaml`, `marcha_pe.yaml`,
+  `marcha_avanco.yaml`, `marcha_avanco_suave.yaml`) — o repositório não traz mais nenhuma
+  marcha pronta. Os parâmetros `matriz` dos nós (`send_gait`, `visualizar_marcha`,
+  `marcha_manual`, `marcha_continua`, `medir_roll`, `controle_pe`) mantêm seus valores padrão
+  antigos como string, mas o arquivo correspondente não existe mais — rodar sem passar
+  `-p matriz:=<nome>` com um `.yaml` próprio falha com `FileNotFoundError`. `adam.rviz` não foi
+  afetado (não é marcha). Documentação atualizada em `README.md`, `src/README.md`,
+  `docs/install.md` e `docs/arquitetura.md` (seção "Criar uma marcha nova" agora começa do
+  zero, sem "copie um `.yaml` existente").
+- `src/ax12_control/scripts/` — utilitários offline (`gerar_mega_matriz.py`,
+  `gerar_marcha_pe.py`, `converter_matriz_lugar.py`, `teste_motores.py`) e a bateria
+  `validacao_ik/` (`ik_harness.py`, `teste_x_trim.py`, `verificar_x_pes.py`,
+  `altura_quadril.py`). Eram scripts `python3` avulsos, fora do grafo ROS — nenhum nó ou
+  launch file dependia deles.
+- `src/adam_moveit_config/` — pacote MoveIt2 gerado pelo Setup Assistant (SRDF, planning
+  groups, `demo.launch.py`/`move_group.launch.py`). O workspace passa de 3 para 2 pacotes
+  ROS (`ax12_control`, `adam_urdf`). O `gait_bridge` continua funcionando: o Caso 2
+  (`send_gait` → `ros2_control`) depende só de `adam_urdf/launch/mock.launch.py`, que já sobe
+  o `controller_manager` e os `JointTrajectoryController`s sozinho, sem MoveIt2. Planejamento
+  de movimento (`move_group`) fica indisponível até o pacote ser regenerado.
+
 ### Adicionado
 - `cin_inve_2.yaml` — marcha completa por ZMP (10 juntas x 8 etapas), gerada de
   `cin_ive_2.mat`, mesma estrutura da `matriz_zmp` mas com amplitude de passada maior nas

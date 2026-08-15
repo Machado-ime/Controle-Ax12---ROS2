@@ -5,8 +5,8 @@ O JointTrajectoryController do ros2_control assina com RELIABLE.
 Este nó faz a conversão de QoS e divide os joints pelo controlador certo.
 
 Uso:
-    # Terminal 1: digital twin
-    ros2 launch adam_moveit_config demo.launch.py
+    # Terminal 1: digital twin (ros2_control mock, sem MoveIt2)
+    ros2 launch adam_urdf mock.launch.py
 
     # Terminal 2: bridge (deixar rodando)
     ros2 run ax12_control gait_bridge

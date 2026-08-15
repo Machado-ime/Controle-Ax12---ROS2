@@ -10,9 +10,9 @@ dentro.
 
 ## Como buildar e rodar
 
-O repositório inteiro é um mini-workspace: `src/ax12_control/`, `src/adam_urdf/` e
-`src/adam_moveit_config/` são 3 pacotes ROS lado a lado. Buildar a partir da raiz do
-repositório funciona normalmente — o `colcon` encontra cada `package.xml` recursivamente:
+O repositório inteiro é um mini-workspace: `src/ax12_control/` e `src/adam_urdf/` são 2
+pacotes ROS lado a lado. Buildar a partir da raiz do repositório funciona normalmente — o
+`colcon` encontra cada `package.xml` recursivamente:
 
 ```bash
 colcon build --packages-select ax12_control
@@ -40,15 +40,14 @@ Não há suíte de testes própria além dos checks padrão do `ament` (`ament_f
 
 ## Mapa do repositório
 
-Este repositório é um mini-workspace com 3 pacotes ROS lado a lado em `src/`:
+Este repositório é um mini-workspace com 2 pacotes ROS lado a lado em `src/`:
 
 - `src/ax12_control/` — o pacote deste README/AGENTS: `package.xml`, `setup.py`, `launch/` e o
   módulo Python `ax12_control/` (nós, matrizes de marcha `*.yaml` usadas em runtime).
 - `src/adam_urdf/` — pacote `ament_cmake` com URDF, meshes e launch files do robô Adam.
-- `src/adam_moveit_config/` — pacote MoveIt2 gerado (planning groups, SRDF, controllers).
 - `docs/` — documentação: `install.md` (tutorial), `troubleshooting.md` (guia),
   `ref/` (referência), `adr.md` (explicação/diário de bordo). Documenta principalmente o
-  pacote `ax12_control`; `adam_urdf`/`adam_moveit_config` ainda não têm docs próprias aqui.
+  pacote `ax12_control`; `adam_urdf` ainda não tem docs próprias aqui.
 
 ## Regras importantes
 

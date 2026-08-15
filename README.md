@@ -23,7 +23,7 @@ O sistema é distribuído entre duas máquinas ligadas pela rede:
 - **Raspberry Pi** — conectada aos motores via USB, roda o `ax12_controller` (único processo que acessa o barramento serial).
 - **PC de comando** — roda o `send_gait`, que lê a marcha de um arquivo `.yaml` e publica os passos via DDS/Wi-Fi.
 
-Estado atual: **10 motores ativos** nas pernas (pitch e roll de tornozelo, pitch de joelho, pitch e roll de quadril). Marchas configuráveis por arquivo YAML sem recompilar o código. Também é possível visualizar a marcha no RViz sem hardware nenhum (digital twin) — veja [docs/install.md](docs/install.md).
+Estado atual: **10 motores ativos** nas pernas (pitch e roll de tornozelo, pitch de joelho, pitch e roll de quadril). Marchas configuráveis por arquivo YAML sem recompilar o código — o repositório não traz nenhuma pronta no momento; veja "Criar uma marcha nova" em [docs/arquitetura.md](docs/arquitetura.md#criar-uma-marcha-nova). Também é possível visualizar a marcha no RViz sem hardware nenhum (digital twin) — veja [docs/install.md](docs/install.md).
 
 ## Pré-requisitos
 
@@ -71,14 +71,9 @@ Controle-Ax12---ROS2/
 │   │   │   ├── marcha_continua.py   # ciclo contínuo da marcha no robô real
 │   │   │   ├── medir_roll.py        # janela Qt: 1 slider -> as 4 juntas de roll
 │   │   │   ├── controle_pe.py       # janela Qt: IK cartesiana do pé (roll + X/Z por perna)
-│   │   │   ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2, MoveIt)
-│   │   │   ├── adam.rviz            # config RViz pré-configurado para o Adam
-│   │   │   ├── otimizada.yaml       # marcha padrão (6 juntas, pitch)
-│   │   │   └── cin_inve.yaml        # marcha por cinemática inversa (8 juntas)
-│   │   ├── scripts/             # utilitários offline (sem ROS) + validacao_ik/
-│   │   └── firmware/            # firmware Arduino da OpenCR (opencr_hurocup, opencr_dxl_imu_bridge)
-│   ├── adam_urdf/               # pacote ROS (ament_cmake): URDF, meshes e launch do Adam
-│   └── adam_moveit_config/     # pacote MoveIt2 gerado p/ planejamento de movimento
+│   │   │   ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2)
+│   │   │   └── adam.rviz            # config RViz pré-configurado para o Adam
+│   └── adam_urdf/               # pacote ROS (ament_cmake): URDF, meshes e launch do Adam
 └── docs/
     ├── install.md           # tutorial: instalação + primeira execução
     ├── troubleshooting.md   # guia: problemas conhecidos e soluções
@@ -105,7 +100,7 @@ Controle-Ax12---ROS2/
 | `marcha_continua` | Raspberry Pi | Roda uma marcha em ciclo contínuo no robô real (vai à coluna 1, espera o play, repete o ciclo) |
 | `medir_roll` | Raspberry Pi | 1 slider comanda as 4 juntas de roll juntas — mede o ângulo necessário para transferir o peso entre as pernas |
 | `controle_pe` | Raspberry Pi | IK cartesiana do pé: roll central + X/Z de cada pé por slider, pé sempre paralelo ao chão; exporta coluna pronta para YAML |
-| `gait_bridge` | PC de comando | Ponte para `ros2_control`/MoveIt2 (pacotes `adam_urdf`/`adam_moveit_config`, em `src/`) |
+| `gait_bridge` | PC de comando | Ponte para `ros2_control` (pacote `adam_urdf`, em `src/`) |
 
 | Tópico | Tipo | QoS |
 |---|---|---|
@@ -123,7 +118,7 @@ Detalhamento completo (fluxo de inicialização, conversões, mapa de juntas, to
 - [DYNAMIXEL SDK — e-Manual](https://emanual.robotis.com/docs/en/software/dynamixel/dynamixel_sdk/overview/) — SDK oficial usado por este pacote.
 - [ROBOTIS-GIT/DynamixelSDK](https://github.com/ROBOTIS-GIT/DynamixelSDK) — repositório do SDK (dependência deste projeto).
 
-Lista completa de referências (hardware, ros2_control, MoveIt2, projetos de robôs bípedes): **[docs/ref/referencias-ax12.md](docs/ref/referencias-ax12.md)**.
+Lista completa de referências (hardware, ros2_control, projetos de robôs bípedes): **[docs/ref/referencias-ax12.md](docs/ref/referencias-ax12.md)**.
 
 ## Links gerais
 
@@ -132,7 +127,7 @@ Lista completa de referências (hardware, ros2_control, MoveIt2, projetos de rob
 - [docs/arquitetura.md](docs/arquitetura.md) — como o sistema funciona por dentro
 - [docs/adr.md](docs/adr.md) — diário de bordo (decisões, testes, aprendizados)
 - [docs/ref/](docs/ref/) — referências externas e cola de comandos ROS 2
-- [src/README.md](src/README.md) — organograma e comandos dos 3 pacotes ROS
+- [src/README.md](src/README.md) — organograma e comandos dos 2 pacotes ROS
 - [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) — como contribuir
 - [AGENTS.md](AGENTS.md) — instruções para agentes de IA
 

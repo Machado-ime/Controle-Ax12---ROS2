@@ -51,9 +51,12 @@ Saída esperada: porta aberta → torque ligado motor a motor → `Pronto para r
 **2. PC de comando:**
 
 ```bash
-ros2 run ax12_control send_gait                                # marcha padrão (otimizada.yaml)
-ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve # outra marcha
+ros2 run ax12_control send_gait --ros-args -p matriz:=<nome_ou_caminho>
 ```
+
+> O repositório não traz nenhuma marcha pronta no momento — o parâmetro `matriz` (padrão
+> `otimizada`, arquivo inexistente) precisa apontar para um `.yaml` que você crie primeiro. Veja
+> "Criar uma marcha nova" em [docs/arquitetura.md](arquitetura.md#criar-uma-marcha-nova).
 
 **3. Telemetria** (opcional, em outro terminal no PC):
 
@@ -64,7 +67,7 @@ ros2 run ax12_control ax12_monitor
 **4. Visualizar no RViz (sem hardware):**
 
 ```bash
-ros2 launch ax12_control visualizar_marcha.launch.py matriz:=cin_inve   # ou otimizada
+ros2 launch ax12_control visualizar_marcha.launch.py matriz:=<nome_ou_caminho>
 ```
 
 Abre o RViz com o modelo 3D do Adam (URDF lido automaticamente do pacote `adam_urdf`) mais uma

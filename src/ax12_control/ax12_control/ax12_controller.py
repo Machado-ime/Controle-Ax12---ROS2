@@ -99,8 +99,9 @@ UNIDADES_POR_RAD_S  = MODELOS['AX12']['unidades_por_rad_s']
 
 # =====================================================================
 # OpenCR como dispositivo no barramento (firmware opencr_dxl_imu_bridge,
-# em src/ax12_control/firmware/) — padrao do ROBOTIS OP3: o OpenCR
-# responde no ID 200 com uma tabela de controle propria contendo o IMU.
+# gravado separadamente na placa — nao faz parte deste repositorio) —
+# padrao do ROBOTIS OP3: o OpenCR responde no ID 200 com uma tabela de
+# controle propria contendo o IMU.
 # Bloco contiguo 30..49: button(1) + voltage(1) + gyro xyz(6) +
 # acc xyz(6) + roll/pitch/yaw(6) — lido numa UNICA transacao.
 # =====================================================================

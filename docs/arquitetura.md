@@ -170,24 +170,29 @@ matriz_movimento:         # 1 linha por junta (mesma ordem)
 
 ### Marchas disponíveis
 
-| Arquivo | Juntas | Descrição |
-|---|---|---|
-| `otimizada.yaml` (padrão) | 6 — pitches de tornozelo, joelho e quadril | Ajustada manualmente. Os rolls de tornozelo (`pd_roll_tornozelo_1`/`pe_roll_tornozelo_2`) ficam de fora: recebem torque mas não são comandados. |
-| `cin_inve.yaml` | 8 — inclui rolls de tornozelo | Gerada da cinemática inversa dos pés (`angulos.mat`). Rolls comandados em 0 rad (centro). |
-| `cin_inve_roll.yaml` | 10 — cin_inve + rolls de tornozelo e quadril | `cin_inve` com balanceio lateral (roll, 0.3 rad) simultâneo à subida do pé — desloca o peso para o lado de apoio. |
-| `matriz_zmp.yaml` | 10 — todas as juntas de perna | Marcha completa por planejamento de ZMP (`matriz_passo.mat`), 8 etapas: roll/peso neutro → transferência de peso → perna no ar → perna à frente, e o espelho do outro lado. Roll 0.2525 rad. |
-| `cin_inve_2.yaml` | 10 — todas as juntas de perna | Mesma estrutura da `matriz_zmp` (8 etapas, mesmo roll), gerada de `cin_ive_2.mat` com amplitude de passada maior nas juntas de pitch. |
+Nenhuma. O repositório não traz mais matrizes de marcha prontas — foram removidas. Os
+parâmetros `matriz` dos nós (`send_gait`, `visualizar_marcha`, `marcha_manual`,
+`marcha_continua`, `medir_roll`, `controle_pe`) continuam com valores padrão (`otimizada`,
+`cin_inve`, `cin_inve_2`, conforme o nó), mas esses arquivos não existem mais — rodar sem
+passar `-p matriz:=<nome>` com um `.yaml` seu falha com `FileNotFoundError`.
 
 ### Selecionar a marcha
 
 ```bash
-ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
+ros2 run ax12_control send_gait --ros-args -p matriz:=<nome_ou_caminho>
 ```
+
+`resolver_caminho_matriz` aceita um nome simples (procura `<nome>.yaml` ao lado do
+`send_gait.py`, dentro do pacote instalado) ou um caminho com diretório, para um arquivo fora
+do pacote.
 
 ### Criar uma marcha nova
 
-1. Copie um `.yaml` existente para `src/ax12_control/ax12_control/<nome>.yaml`.
-2. Ajuste `nomes_juntas`, `matriz_movimento`, `passo` e `pausa`.
+1. Escreva um `.yaml` em `src/ax12_control/ax12_control/<nome>.yaml` seguindo o formato acima
+   (`passo`, `pausa`, `nomes_juntas`, `matriz_movimento`).
+2. Confira os nomes de junta contra `joint_map` em `ax12_controller.py` e os limites contra
+   `joint_limits` — a validação de `carregar_marcha` só checa a forma da matriz, não os limites
+   físicos.
 3. Recompile: `colcon build --packages-select ax12_control`.
 4. Use com `-p matriz:=<nome>`.
 
@@ -198,7 +203,7 @@ ros2 run ax12_control send_gait --ros-args -p matriz:=cin_inve
 Para ver a marcha no RViz sem Raspberry Pi nem motores ligados:
 
 ```bash
-ros2 launch ax12_control visualizar_marcha.launch.py matriz:=otimizada
+ros2 launch ax12_control visualizar_marcha.launch.py matriz:=<nome_ou_caminho>
 ```
 
 Sobe três nós:
@@ -220,7 +225,7 @@ Une o seletor de coluna do `visualizar_marcha`/`passo_slider` com o envio ao har
 
 Publica só `/joint_trajectory` (mesmo tópico do `ax12_controller`); o RViz mostra a posição **real** via `/joint_states` do controlador — mesma decisão de design do `controle_manual` (sem duplicar publisher de `/joint_states`). Reaproveita `resolver_caminho_matriz`/`carregar_marcha` do `send_gait` para ler e validar a matriz, e calcula a velocidade de cada junta como `|Δ| / passo` (todas chegam juntas, como no `send_gait`). Como passa pelo `ax12_controller`, herda a correção de juntas invertidas.
 
-### `gait_bridge.py` — ponte para o `ros2_control` (Caso 2: MoveIt2/mock)
+### `gait_bridge.py` — ponte para o `ros2_control` (Caso 2: mock)
 
 Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s do pacote `adam_urdf` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). Sem o bridge os dois lados nunca se conectam, mesmo com os nomes de junta certos, porque o QoS é incompatível.
 
