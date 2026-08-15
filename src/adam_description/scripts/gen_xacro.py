@@ -13,17 +13,16 @@ adam_fixed.urdf = visual origins corrigidas manualmente; e' a base de verdade.
 Re-rode este script se o SolidWorks reexportar e as origens forem recalibradas.
 
 Uso:
-    cd ~/dev/Controle-Ax12---ROS2/src/adam_urdf/urdf
-    python3 gen_xacro.py
+    python3 scripts/gen_xacro.py
 """
 
 import os
 import re
 import xml.etree.ElementTree as ET
 
-AQUI = os.path.dirname(os.path.abspath(__file__))
-ENTRADA = os.path.join(AQUI, 'adam_fixed.urdf')
-SAIDA = os.path.join(AQUI, 'adam.urdf.xacro')
+URDF_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'urdf')
+ENTRADA = os.path.join(URDF_DIR, 'adam_fixed.urdf')
+SAIDA = os.path.join(URDF_DIR, 'adam.urdf.xacro')
 
 # Junta do URDF -> (lower, upper) em radianos. rad = (grau_AX12 - 150)*pi/180.
 # PD e' espelho de PE. Quadril ainda sem medicao (placeholder +-2.618).

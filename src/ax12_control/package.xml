@@ -21,6 +21,8 @@
   <exec_depend>ament_index_python</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>rviz2</exec_depend>
+  <!-- os launch files carregam o URDF via get_package_share_directory -->
+  <exec_depend>adam_description</exec_depend>
   <!-- passo_slider.py -->
   <exec_depend>python_qt_binding</exec_depend>
 

@@ -3,14 +3,19 @@ Corrige os origins visuais/colisão do URDF gerado pelo SolidWorks.
 
 O exportador calcula o origin de cada link como o inverso da junta LOCAL,
 mas deveria ser o inverso de toda a cadeia cinemática até aquele link.
+
+Uso:
+    python3 scripts/fix_urdf_origins.py
 """
 
+import os
 import numpy as np
 from scipy.spatial.transform import Rotation
 import xml.etree.ElementTree as ET
 
-INPUT  = "urdf/adam.urdf"
-OUTPUT = "urdf/adam_fixed.urdf"
+URDF_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'urdf')
+INPUT  = os.path.join(URDF_DIR, "adam.urdf")
+OUTPUT = os.path.join(URDF_DIR, "adam_fixed.urdf")
 
 
 def parse_origin(elem):

@@ -6,7 +6,7 @@ Este nó faz a conversão de QoS e divide os joints pelo controlador certo.
 
 Uso:
     # Terminal 1: digital twin (ros2_control mock, sem MoveIt2)
-    ros2 launch adam_urdf mock.launch.py
+    ros2 launch adam_bringup mock.launch.py
 
     # Terminal 2: bridge (deixar rodando)
     ros2 run ax12_control gait_bridge

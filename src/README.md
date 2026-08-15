@@ -1,13 +1,17 @@
 # src/ — pacotes ROS 2 do Adam
 
-Esta pasta é um mini-workspace: 2 pacotes ROS 2 lado a lado, prontos para `colcon build` a
+Esta pasta é um mini-workspace: 3 pacotes ROS 2 lado a lado, prontos para `colcon build` a
 partir da raiz do repositório (veja o [README principal](../README.md)).
+
+A divisão segue a convenção do ecossistema ROS 2: `_description` guarda só o modelo físico
+(dados estáticos), `_bringup` guarda o runtime que sobe o `ros2_control`, e o driver fica
+num pacote próprio.
 
 ## Organograma
 
 ```
 src/
-├── ax12_control/                 # pacote: controle dos motores AX-12
+├── ax12_control/                 # pacote: driver + ferramentas de operação
 │   ├── package.xml
 │   ├── setup.py
 │   ├── setup.cfg
@@ -34,26 +38,34 @@ src/
 │       ├── gait_bridge.py
 │       └── adam.rviz             # nenhuma marcha .yaml vem no repositório (ver docs/arquitetura.md)
 │
-└── adam_urdf/                    # pacote: URDF, meshes e launch files do robô
+├── adam_description/             # pacote: modelo físico do robô (só dados)
+│   ├── package.xml
+│   ├── CMakeLists.txt
+│   ├── urdf/
+│   │   ├── adam_fixed.urdf       # fonte de verdade (origens visuais corrigidas à mão)
+│   │   ├── adam.urdf.xacro       # gerado — não editar à mão
+│   │   ├── adam.ros2_control.xacro
+│   │   ├── adam.urdf             # versão antiga, sem as correções de origem
+│   │   └── adam.csv              # export de referência (BOM/juntas), não usado em runtime
+│   ├── meshes/                   # 16 arquivos .STL (pernas e braços)
+│   ├── config/
+│   │   ├── adam.rviz
+│   │   └── joint_names_adam.yaml # sobra do exportador SolidWorks, não usada em runtime
+│   ├── scripts/                  # geradores offline (python3 puro, não instalados)
+│   │   ├── gen_xacro.py          # gera adam.urdf.xacro a partir do adam_fixed.urdf
+│   │   └── fix_urdf_origins.py   # corrige as origens visuais do export do SolidWorks
+│   └── launch/
+│       ├── display.launch.py     # visualizar URDF no RViz (com/sem sliders)
+│       ├── gazebo.launch.py      # Gazebo (legado, não mantido)
+│       └── display.launch        # launch ROS1 (legado, não mantido)
+│
+└── adam_bringup/                 # pacote: runtime do ros2_control
     ├── package.xml
     ├── CMakeLists.txt
-    ├── urdf/
-    │   ├── adam_fixed.urdf       # fonte de verdade (origens visuais corrigidas à mão)
-    │   ├── gen_xacro.py          # gera adam.urdf.xacro a partir do adam_fixed.urdf
-    │   ├── adam.urdf.xacro       # gerado — não editar à mão
-    │   ├── adam.ros2_control.xacro
-    │   ├── adam.urdf             # versão antiga, sem as correções de origem
-    │   └── adam.csv              # export de referência (BOM/juntas), não usado em runtime
-    ├── meshes/                   # 16 arquivos .STL (pernas e braços)
     ├── config/
-    │   ├── adam.rviz
-    │   ├── ros2_controllers.yaml
-    │   └── joint_names_adam.yaml
+    │   └── ros2_controllers.yaml # controller_manager + 1 JointTrajectoryController por perna
     └── launch/
-        ├── display.launch.py     # visualizar URDF no RViz (com/sem sliders)
-        ├── mock.launch.py        # digital twin: ros2_control mock + RViz
-        ├── gazebo.launch.py      # Gazebo (legado, não mantido)
-        └── display.launch        # launch ROS1 (legado, não mantido)
+        └── mock.launch.py        # digital twin: ros2_control mock + RViz
 ```
 
 ## Cada pacote em detalhe
@@ -78,24 +90,35 @@ marcha mora aqui. Documentação aprofundada: [docs/arquitetura.md](../docs/arqu
 | `marcha_continua.py` | Roda uma marcha em ciclo contínuo no robô real: ao iniciar vai pra coluna 1 e espera o play, depois repete o ciclo (coluna 2, 3, ..., volta pra 1) — reaproveita `ConexaoRobo`/`carregar_marcha` do `send_gait.py` |
 | `medir_roll.py` | Janela Qt com UM slider que comanda as 4 juntas de roll juntas (pitchs fixos na coluna 1 da matriz) — mede no robô real o ângulo de roll necessário para transferir o peso entre as pernas |
 | `controle_pe.py` | Janela Qt com IK cartesiana do pé: 5 sliders (roll central, X da passada em oposição dir/esq, Z de cada pé, trim de quadril) resolvidos por Newton sobre a FK exata do URDF, sempre com o pé paralelo ao chão. Botão "Exportar coluna" imprime os 10 ângulos prontos para colar numa matriz YAML |
-| `gait_bridge.py` | Ponte entre `send_gait` (QoS BEST_EFFORT) e os `JointTrajectoryController` do `adam_urdf` (QoS RELIABLE) |
+| `gait_bridge.py` | Ponte entre `send_gait` (QoS BEST_EFFORT) e os `JointTrajectoryController` do `adam_bringup` (QoS RELIABLE) |
 | `adam.rviz` | Config do RViz usada por `visualizar_marcha.launch.py` |
 | `package.xml` / `setup.py` / `setup.cfg` / `resource/` | Metadados do pacote (dependências, `console_scripts`, instalação) |
 
-### `adam_urdf/` — modelo do robô
+### `adam_description/` — modelo do robô
 
-Descrição física do Adam: URDF, malhas 3D e os launch files que o colocam no RViz ou no
-`ros2_control`. Sem código Python de nó próprio — é um pacote `ament_cmake` de dados.
+Descrição física do Adam: URDF, malhas 3D e os launch de visualização. Sem código de nó
+próprio — é um pacote `ament_cmake` de dados. Nada aqui sobe `ros2_control`; isso é papel do
+`adam_bringup`.
 
 | Item | Função |
 |---|---|
 | `adam_fixed.urdf` | Fonte de verdade da geometria (origens visuais corrigidas manualmente) |
-| `gen_xacro.py` | Regenera `adam.urdf.xacro` a partir do `adam_fixed.urdf`, injetando limites de junta — **rode este script para editar limites, nunca edite o `.xacro` direto** |
 | `adam.urdf.xacro` | Versão com `<ros2_control>` (gerada — usada por `mock.launch.py`) |
-| `meshes/*.STL` | As 16 peças do robô (pernas e braços) referenciadas pelo URDF via `package://adam_urdf/meshes/...` |
+| `meshes/*.STL` | As 16 peças do robô (pernas e braços) referenciadas pelo URDF via `package://adam_description/meshes/...` |
+| `scripts/gen_xacro.py` | Regenera `adam.urdf.xacro` a partir do `adam_fixed.urdf`, injetando limites de junta — **rode este script para editar limites, nunca edite o `.xacro` direto** |
+| `scripts/fix_urdf_origins.py` | Corrige as origens visuais/colisão do export cru do SolidWorks, gerando o `adam_fixed.urdf` |
 | `display.launch.py` | RViz com o modelo: `use_gui_sliders:=true` (padrão) para sliders manuais, `:=false` para espelhar o robô real via `/joint_states` da rede |
-| `mock.launch.py` | Digital twin: `ros2_control` com `mock_components/GenericSystem` + RViz — sobe sozinho o `controller_manager` e os `JointTrajectoryController`s de cada perna |
 | `gazebo.launch.py`, `display.launch` | Legados (Gazebo / ROS1), não mantidos |
+
+### `adam_bringup/` — runtime do `ros2_control`
+
+Sobe o robô (mock por enquanto): `controller_manager`, spawners e RViz. É o pacote que amarra
+descrição + controllers, mantendo o `adam_description` como dado puro.
+
+| Item | Função |
+|---|---|
+| `config/ros2_controllers.yaml` | `controller_manager` a 50 Hz + um `JointTrajectoryController` por perna (4 juntas cada) e o `joint_state_broadcaster` |
+| `launch/mock.launch.py` | Digital twin: `ros2_control` com `mock_components/GenericSystem` + RViz — sobe sozinho o `controller_manager` e os controllers de cada perna |
 
 ## Comandos para rodar cada código
 
@@ -151,20 +174,33 @@ ros2 launch ax12_control medir_roll.launch.py matriz:=<nome> velocidade:=0.3
 ros2 launch ax12_control controle_pe.launch.py matriz:=<nome> velocidade:=0.3
 ```
 
-**`adam_urdf` — launch:**
+**`adam_description` — launch (visualização do modelo):**
 
 ```bash
-ros2 launch adam_urdf display.launch.py                        # sliders manuais
-ros2 launch adam_urdf display.launch.py use_gui_sliders:=false  # espelha o robô real
-ros2 launch adam_urdf mock.launch.py                            # digital twin: ros2_control mock
+ros2 launch adam_description display.launch.py                         # sliders manuais
+ros2 launch adam_description display.launch.py use_gui_sliders:=false  # espelha o robô real
+```
+
+**`adam_bringup` — launch (digital twin com `ros2_control`):**
+
+```bash
+ros2 launch adam_bringup mock.launch.py
+```
+
+**`adam_description/scripts/` — geradores offline (sem `ros2 run`, rodar da raiz do pacote):**
+
+```bash
+cd src/adam_description
+python3 scripts/gen_xacro.py          # regenera adam.urdf.xacro a partir do adam_fixed.urdf
+python3 scripts/fix_urdf_origins.py   # regenera adam_fixed.urdf a partir do export cru
 ```
 
 ## Clonar e buildar — mesmo padrão em qualquer máquina
 
 O repositório já é o workspace: tem `src/` na raiz, então não precisa criar uma pasta de
 workspace separada nem symlink. A receita é a mesma em qualquer máquina — PC de comando ou
-Raspberry Pi (a Pi também roda `adam_urdf`, via `controle_manual.launch.py`, jog manual com
-RViz espelhando o robô real):
+Raspberry Pi (a Pi também roda `adam_description`, via `controle_manual.launch.py`, jog manual
+com RViz espelhando o robô real):
 
 ```bash
 git clone https://github.com/Machado-ime/Controle-Ax12---ROS2.git ~/dev/Controle-Ax12---ROS2

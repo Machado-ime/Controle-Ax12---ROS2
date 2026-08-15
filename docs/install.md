@@ -70,7 +70,7 @@ ros2 run ax12_control ax12_monitor
 ros2 launch ax12_control visualizar_marcha.launch.py matriz:=<nome_ou_caminho>
 ```
 
-Abre o RViz com o modelo 3D do Adam (URDF lido automaticamente do pacote `adam_urdf`) mais uma
+Abre o RViz com o modelo 3D do Adam (URDF lido automaticamente do pacote `adam_description`) mais uma
 janela Qt com um slider para escolher manualmente a etapa da marcha exibida. Para avançar
 sozinho no tempo em vez de manual, passe `passo_s:=0.5` (segundos por etapa). Não exige
 Raspberry Pi nem motores.

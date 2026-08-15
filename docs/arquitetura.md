@@ -210,7 +210,7 @@ Sobe três nós:
 
 | Nó | Função |
 |---|---|
-| `robot_state_publisher` | TF a partir do URDF do pacote `adam_urdf` (lido automaticamente — não precisa passar `urdf:=`). |
+| `robot_state_publisher` | TF a partir do URDF do pacote `adam_description` (lido automaticamente — não precisa passar `urdf:=`). |
 | `visualizar_marcha` | Publica `/joint_states` direto do YAML da marcha, sem `ros2_control`. Juntas do URDF ausentes na matriz são publicadas em 0 rad. |
 | `passo_slider` | Janela Qt com slider + botões ◀▶ que publica o índice da etapa em `/passo_marcha`. |
 
@@ -227,7 +227,7 @@ Publica só `/joint_trajectory` (mesmo tópico do `ax12_controller`); o RViz mos
 
 ### `gait_bridge.py` — ponte para o `ros2_control` (Caso 2: mock)
 
-Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s do pacote `adam_urdf` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). Sem o bridge os dois lados nunca se conectam, mesmo com os nomes de junta certos, porque o QoS é incompatível.
+Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s do pacote `adam_bringup` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). Sem o bridge os dois lados nunca se conectam, mesmo com os nomes de junta certos, porque o QoS é incompatível.
 
 ### `controle_manual.py` — jog manual com hardware real (`controle_manual.launch.py`)
 

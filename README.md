@@ -73,7 +73,8 @@ Controle-Ax12---ROS2/
 │   │   │   ├── controle_pe.py       # janela Qt: IK cartesiana do pé (roll + X/Z por perna)
 │   │   │   ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2)
 │   │   │   └── adam.rviz            # config RViz pré-configurado para o Adam
-│   └── adam_urdf/               # pacote ROS (ament_cmake): URDF, meshes e launch do Adam
+│   ├── adam_description/        # pacote ROS (ament_cmake): URDF, meshes e launch do modelo
+│   └── adam_bringup/            # pacote ROS (ament_cmake): ros2_control + mock.launch.py
 └── docs/
     ├── install.md           # tutorial: instalação + primeira execução
     ├── troubleshooting.md   # guia: problemas conhecidos e soluções
@@ -100,7 +101,7 @@ Controle-Ax12---ROS2/
 | `marcha_continua` | Raspberry Pi | Roda uma marcha em ciclo contínuo no robô real (vai à coluna 1, espera o play, repete o ciclo) |
 | `medir_roll` | Raspberry Pi | 1 slider comanda as 4 juntas de roll juntas — mede o ângulo necessário para transferir o peso entre as pernas |
 | `controle_pe` | Raspberry Pi | IK cartesiana do pé: roll central + X/Z de cada pé por slider, pé sempre paralelo ao chão; exporta coluna pronta para YAML |
-| `gait_bridge` | PC de comando | Ponte para `ros2_control` (pacote `adam_urdf`, em `src/`) |
+| `gait_bridge` | PC de comando | Ponte para `ros2_control` (pacote `adam_bringup`, em `src/`) |
 
 | Tópico | Tipo | QoS |
 |---|---|---|
@@ -127,7 +128,7 @@ Lista completa de referências (hardware, ros2_control, projetos de robôs bípe
 - [docs/arquitetura.md](docs/arquitetura.md) — como o sistema funciona por dentro
 - [docs/adr.md](docs/adr.md) — diário de bordo (decisões, testes, aprendizados)
 - [docs/ref/](docs/ref/) — referências externas e cola de comandos ROS 2
-- [src/README.md](src/README.md) — organograma e comandos dos 2 pacotes ROS
+- [src/README.md](src/README.md) — organograma e comandos dos 3 pacotes ROS
 - [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) — como contribuir
 - [AGENTS.md](AGENTS.md) — instruções para agentes de IA
 

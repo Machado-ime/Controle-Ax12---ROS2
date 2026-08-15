@@ -9,7 +9,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/base_link.STL" />
+        <mesh filename="package://adam_description/meshes/base_link.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -18,7 +18,7 @@
     <collision>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/base_link.STL" />
+        <mesh filename="package://adam_description/meshes/base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -31,7 +31,7 @@
     <visual>
       <origin xyz="0.03625008 -0.01049992 -0.02299991" rpy="-2.35619449 -1.57079113 -2.35619449" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_quadril.STL" />
+        <mesh filename="package://adam_description/meshes/pe_quadril.STL" />
       </geometry>
       <material name="">
         <color rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
@@ -40,7 +40,7 @@
     <collision>
       <origin xyz="0.03625008 -0.01049992 -0.02299991" rpy="-2.35619449 -1.57079113 -2.35619449" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_quadril.STL" />
+        <mesh filename="package://adam_description/meshes/pe_quadril.STL" />
       </geometry>
     </collision>
   </link>
@@ -60,7 +60,7 @@
     <visual>
       <origin xyz="0.05790780 0.00175479 0.03045030" rpy="-1.57079265 0.00000735 -1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_coxa.STL" />
+        <mesh filename="package://adam_description/meshes/pe_coxa.STL" />
       </geometry>
       <material name="">
         <color rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
@@ -69,7 +69,7 @@
     <collision>
       <origin xyz="0.05790780 0.00175479 0.03045030" rpy="-1.57079265 0.00000735 -1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_coxa.STL" />
+        <mesh filename="package://adam_description/meshes/pe_coxa.STL" />
       </geometry>
     </collision>
   </link>
@@ -89,7 +89,7 @@
     <visual>
       <origin xyz="-0.01394569 -0.13230775 0.03045030" rpy="-1.57079265 0.00000735 -3.14159265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_canela.STL" />
+        <mesh filename="package://adam_description/meshes/pe_canela.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -98,7 +98,7 @@
     <collision>
       <origin xyz="-0.01394569 -0.13230775 0.03045030" rpy="-1.57079265 0.00000735 -3.14159265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_canela.STL" />
+        <mesh filename="package://adam_description/meshes/pe_canela.STL" />
       </geometry>
     </collision>
   </link>
@@ -118,7 +118,7 @@
     <visual>
       <origin xyz="-0.20754875 0.00075345 0.03045030" rpy="-1.57079265 0.00000735 1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_tornozelo.STL" />
+        <mesh filename="package://adam_description/meshes/pe_tornozelo.STL" />
       </geometry>
       <material name="">
         <color rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
@@ -127,7 +127,7 @@
     <collision>
       <origin xyz="-0.20754875 0.00075345 0.03045030" rpy="-1.57079265 0.00000735 1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_tornozelo.STL" />
+        <mesh filename="package://adam_description/meshes/pe_tornozelo.STL" />
       </geometry>
     </collision>
   </link>
@@ -147,7 +147,7 @@
     <visual>
       <origin xyz="-0.20764875 -0.05165039 0.02455327" rpy="-0.78539449 -1.57079113 0.78539816" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_pe.STL" />
+        <mesh filename="package://adam_description/meshes/pe_pe.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -156,7 +156,7 @@
     <collision>
       <origin xyz="-0.20764875 -0.05165039 0.02455327" rpy="-0.78539449 -1.57079113 0.78539816" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pe_pe.STL" />
+        <mesh filename="package://adam_description/meshes/pe_pe.STL" />
       </geometry>
     </collision>
   </link>
@@ -176,7 +176,7 @@
     <visual>
       <origin xyz="0.03625008 0.01049992 -0.02299991" rpy="2.35619449 -1.57079113 2.35619449" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_quadril.STL" />
+        <mesh filename="package://adam_description/meshes/pd_quadril.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -185,7 +185,7 @@
     <collision>
       <origin xyz="0.03625008 0.01049992 -0.02299991" rpy="2.35619449 -1.57079113 2.35619449" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_quadril.STL" />
+        <mesh filename="package://adam_description/meshes/pd_quadril.STL" />
       </geometry>
     </collision>
   </link>
@@ -205,7 +205,7 @@
     <visual>
       <origin xyz="0.05790780 -0.00175479 0.03045030" rpy="1.57079265 0.00000735 1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_coxa.STL" />
+        <mesh filename="package://adam_description/meshes/pd_coxa.STL" />
       </geometry>
       <material name="">
         <color rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
@@ -214,7 +214,7 @@
     <collision>
       <origin xyz="0.05790780 -0.00175479 0.03045030" rpy="1.57079265 0.00000735 1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_coxa.STL" />
+        <mesh filename="package://adam_description/meshes/pd_coxa.STL" />
       </geometry>
     </collision>
   </link>
@@ -234,7 +234,7 @@
     <visual>
       <origin xyz="-0.01394569 0.13230775 0.03045030" rpy="1.57079265 0.00000735 3.14159265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_canela.STL" />
+        <mesh filename="package://adam_description/meshes/pd_canela.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -243,7 +243,7 @@
     <collision>
       <origin xyz="-0.01394569 0.13230775 0.03045030" rpy="1.57079265 0.00000735 3.14159265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_canela.STL" />
+        <mesh filename="package://adam_description/meshes/pd_canela.STL" />
       </geometry>
     </collision>
   </link>
@@ -263,7 +263,7 @@
     <visual>
       <origin xyz="-0.20754875 -0.00075345 0.03045030" rpy="1.57079265 0.00000735 -1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_tornozelo.STL" />
+        <mesh filename="package://adam_description/meshes/pd_tornozelo.STL" />
       </geometry>
       <material name="">
         <color rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
@@ -272,7 +272,7 @@
     <collision>
       <origin xyz="-0.20754875 -0.00075345 0.03045030" rpy="1.57079265 0.00000735 -1.57079265" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_tornozelo.STL" />
+        <mesh filename="package://adam_description/meshes/pd_tornozelo.STL" />
       </geometry>
     </collision>
   </link>
@@ -292,7 +292,7 @@
     <visual>
       <origin xyz="-0.20764875 0.05145040 0.02545327" rpy="0.78539449 -1.57079113 -0.78539816" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_pe.STL" />
+        <mesh filename="package://adam_description/meshes/pd_pe.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -301,7 +301,7 @@
     <collision>
       <origin xyz="-0.20764875 0.05145040 0.02545327" rpy="0.78539449 -1.57079113 -0.78539816" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/pd_pe.STL" />
+        <mesh filename="package://adam_description/meshes/pd_pe.STL" />
       </geometry>
     </collision>
   </link>
@@ -321,7 +321,7 @@
     <visual>
       <origin xyz="-0.17620805 0.00549938 -0.08799998" rpy="1.57079647 -0.00000367 1.53300000" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/be_ombro.STL" />
+        <mesh filename="package://adam_description/meshes/be_ombro.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -330,7 +330,7 @@
     <collision>
       <origin xyz="-0.17620805 0.00549938 -0.08799998" rpy="1.57079647 -0.00000367 1.53300000" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/be_ombro.STL" />
+        <mesh filename="package://adam_description/meshes/be_ombro.STL" />
       </geometry>
     </collision>
   </link>
@@ -350,7 +350,7 @@
     <visual>
       <origin xyz="-0.15828976 0.11100006 -0.02216938" rpy="-0.19251951 -1.57075794 -2.94907300" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/be_biceps.STL" />
+        <mesh filename="package://adam_description/meshes/be_biceps.STL" />
       </geometry>
       <material name="">
         <color rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
@@ -359,7 +359,7 @@
     <collision>
       <origin xyz="-0.15828976 0.11100006 -0.02216938" rpy="-0.19251951 -1.57075794 -2.94907300" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/be_biceps.STL" />
+        <mesh filename="package://adam_description/meshes/be_biceps.STL" />
       </geometry>
     </collision>
   </link>
@@ -379,7 +379,7 @@
     <visual>
       <origin xyz="-0.01936902 0.09838934 -0.13200042" rpy="1.57079279 -0.00000734 0.00003400" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/be_antibraco.STL" />
+        <mesh filename="package://adam_description/meshes/be_antibraco.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -388,7 +388,7 @@
     <collision>
       <origin xyz="-0.01936902 0.09838934 -0.13200042" rpy="1.57079279 -0.00000734 0.00003400" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/be_antibraco.STL" />
+        <mesh filename="package://adam_description/meshes/be_antibraco.STL" />
       </geometry>
     </collision>
   </link>
@@ -408,7 +408,7 @@
     <visual>
       <origin xyz="-0.17620805 -0.00549938 -0.08799998" rpy="-1.57079647 -0.00000367 -1.53300000" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/bd_ombro.STL" />
+        <mesh filename="package://adam_description/meshes/bd_ombro.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -417,7 +417,7 @@
     <collision>
       <origin xyz="-0.17620805 -0.00549938 -0.08799998" rpy="-1.57079647 -0.00000367 -1.53300000" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/bd_ombro.STL" />
+        <mesh filename="package://adam_description/meshes/bd_ombro.STL" />
       </geometry>
     </collision>
   </link>
@@ -437,7 +437,7 @@
     <visual>
       <origin xyz="-0.15828976 -0.11100006 -0.02216938" rpy="0.19251951 -1.57075794 2.94907300" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/bd_biceps.STL" />
+        <mesh filename="package://adam_description/meshes/bd_biceps.STL" />
       </geometry>
       <material name="">
         <color rgba="0.894117647058823 0.894117647058823 0.894117647058823 1" />
@@ -446,7 +446,7 @@
     <collision>
       <origin xyz="-0.15828976 -0.11100006 -0.02216938" rpy="0.19251951 -1.57075794 2.94907300" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/bd_biceps.STL" />
+        <mesh filename="package://adam_description/meshes/bd_biceps.STL" />
       </geometry>
     </collision>
   </link>
@@ -466,7 +466,7 @@
     <visual>
       <origin xyz="-0.01936974 -0.09839022 -0.13199967" rpy="-1.57080049 -0.00000734 -0.00004135" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/bd_antibraco.STL" />
+        <mesh filename="package://adam_description/meshes/bd_antibraco.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -475,7 +475,7 @@
     <collision>
       <origin xyz="-0.01936974 -0.09839022 -0.13199967" rpy="-1.57080049 -0.00000734 -0.00004135" />
       <geometry>
-        <mesh filename="package://adam_urdf/meshes/bd_antibraco.STL" />
+        <mesh filename="package://adam_description/meshes/bd_antibraco.STL" />
       </geometry>
     </collision>
   </link>

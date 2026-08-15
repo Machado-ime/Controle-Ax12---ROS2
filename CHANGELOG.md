@@ -6,7 +6,29 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Alterado
+- Reorganização dos pacotes seguindo a convenção do ecossistema ROS 2. O workspace volta a
+  ter 3 pacotes:
+  - `adam_urdf` renomeado para **`adam_description`** (`_description` é o sufixo padrão para
+    um pacote só de URDF/malhas). Atualizados `package.xml`, `CMakeLists.txt`, todas as URIs
+    `package://adam_urdf/meshes/...` nos URDF/xacro/csv, e as chamadas
+    `get_package_share_directory`/`FindPackageShare` nos launch dos dois pacotes.
+  - Criado **`adam_bringup`**, para onde foram `config/ros2_controllers.yaml` e
+    `launch/mock.launch.py`. Subir `controller_manager`/controllers não é papel de um pacote
+    `_description`; o `adam_description` volta a ser só dado do modelo.
+  - `gen_xacro.py` e `fix_urdf_origins.py` movidos para `adam_description/scripts/` (estavam
+    soltos em `urdf/` e na raiz do pacote). Os dois passaram a resolver caminhos relativos ao
+    próprio arquivo, então rodam de qualquer diretório; verificado que `gen_xacro.py`
+    regenera o `adam.urdf.xacro` byte-idêntico.
+  - `ax12_control/package.xml` passou a declarar `<exec_depend>adam_description</exec_depend>`
+    — os launch files já carregavam o URDF via `get_package_share_directory`, mas a
+    dependência não estava declarada.
+  - `adam_description/package.xml`: autor/maintainer `TODO` (sobra do exportador SolidWorks)
+    preenchidos e licença alinhada com o `LICENSE` do repositório (MIT, era BSD).
+
 ### Removido
+- `src/adam_description/export.log` — 2259 linhas de log bruto do plugin SW2URDF, artefato de
+  ferramenta que não deveria estar versionado.
 - `src/ax12_control/firmware/` — os dois sketches Arduino para a placa OpenCR
   (`opencr_dxl_imu_bridge/`, `opencr_hurocup/`, 33 arquivos). Não passavam pelo `colcon`/`ros2`
   e nenhum código Python importava deles. O comentário em `ax12_controller.py` que apontava

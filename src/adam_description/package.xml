@@ -1,15 +1,13 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>adam_urdf</name>
+  <name>adam_description</name>
   <version>1.0.0</version>
   <description>
-    <p>URDF Description package for adam</p>
-    <p>This package contains configuration data, 3D models and launch files
-for adam robot</p>
+    Descricao fisica do robo bipede Adam: URDF/xacro, malhas 3D e launch
+    files de visualizacao.
   </description>
-  <author>TODO</author>
-  <maintainer email="TODO@email.com" />
-  <license>BSD</license>
+  <maintainer email="machado.fernando@ime.eb.br">Fernando Machado</maintainer>
+  <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 

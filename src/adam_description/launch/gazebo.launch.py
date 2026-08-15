@@ -7,7 +7,7 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-    pkg = get_package_share_directory('adam_urdf')
+    pkg = get_package_share_directory('adam_description')
     urdf_file = os.path.join(pkg, 'urdf', 'adam.urdf')
 
     with open(urdf_file, 'r') as f:

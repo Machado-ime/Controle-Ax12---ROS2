@@ -22,10 +22,10 @@ from launch_ros.actions import Node
 
 def generate_launch_description() -> LaunchDescription:
     pkg_ax12 = get_package_share_directory('ax12_control')
-    adam_urdf = os.path.join(
-        get_package_share_directory('adam_urdf'), 'urdf', 'adam_fixed.urdf')
+    urdf_path = os.path.join(
+        get_package_share_directory('adam_description'), 'urdf', 'adam_fixed.urdf')
 
-    with open(adam_urdf, 'r') as f:
+    with open(urdf_path, 'r') as f:
         robot_description = f.read()
 
     return LaunchDescription([

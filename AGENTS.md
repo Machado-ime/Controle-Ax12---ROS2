@@ -10,9 +10,9 @@ dentro.
 
 ## Como buildar e rodar
 
-O repositório inteiro é um mini-workspace: `src/ax12_control/` e `src/adam_urdf/` são 2
-pacotes ROS lado a lado. Buildar a partir da raiz do repositório funciona normalmente — o
-`colcon` encontra cada `package.xml` recursivamente:
+O repositório inteiro é um mini-workspace: `src/ax12_control/`, `src/adam_description/` e
+`src/adam_bringup/` são 3 pacotes ROS lado a lado. Buildar a partir da raiz do repositório
+funciona normalmente — o `colcon` encontra cada `package.xml` recursivamente:
 
 ```bash
 colcon build --packages-select ax12_control
@@ -33,21 +33,26 @@ Não há suíte de testes própria além dos checks padrão do `ament` (`ament_f
 - Commits em português, modo imperativo, frase curta ("Adiciona X", "Corrige Y", "Atualiza
   Z") — não é Conventional Commits, é a convenção real já usada neste repositório.
 - Nomes de arquivo: minúsculas, hífen, sem acento nem espaço.
-- Nomes de junta seguem o URDF do pacote `adam_urdf`: `{lado}_{movimento}_{segmento}_{N}` (ex.:
+- Nomes de junta seguem o URDF do pacote `adam_description`: `{lado}_{movimento}_{segmento}_{N}` (ex.:
   `pd_picht_tornozelo_3`). O `N` é o ID de projeto no URDF, **não** é o ID físico do motor no
   barramento — os IDs reais vivem em `joint_map`
   (`src/ax12_control/ax12_control/ax12_controller.py`).
 
 ## Mapa do repositório
 
-Este repositório é um mini-workspace com 2 pacotes ROS lado a lado em `src/`:
+Este repositório é um mini-workspace com 3 pacotes ROS lado a lado em `src/`, seguindo a
+convenção do ecossistema ROS 2 (`_description` para o modelo, `_bringup` para o runtime):
 
 - `src/ax12_control/` — o pacote deste README/AGENTS: `package.xml`, `setup.py`, `launch/` e o
   módulo Python `ax12_control/` (nós, matrizes de marcha `*.yaml` usadas em runtime).
-- `src/adam_urdf/` — pacote `ament_cmake` com URDF, meshes e launch files do robô Adam.
+- `src/adam_description/` — pacote `ament_cmake` só com dados do modelo: URDF/xacro, meshes,
+  config de RViz e os launch de visualização. `scripts/` tem os geradores (`gen_xacro.py`,
+  `fix_urdf_origins.py`), que rodam com `python3` e não são instalados.
+- `src/adam_bringup/` — pacote `ament_cmake` com o runtime do `ros2_control`:
+  `config/ros2_controllers.yaml` e `launch/mock.launch.py`.
 - `docs/` — documentação: `install.md` (tutorial), `troubleshooting.md` (guia),
   `ref/` (referência), `adr.md` (explicação/diário de bordo). Documenta principalmente o
-  pacote `ax12_control`; `adam_urdf` ainda não tem docs próprias aqui.
+  pacote `ax12_control`; `adam_description`/`adam_bringup` ainda não têm docs próprias aqui.
 
 ## Regras importantes
 
