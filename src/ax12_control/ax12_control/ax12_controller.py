@@ -206,6 +206,13 @@ class AX12HardwareInterface(Node):
             'pe_picht_tornozelo_4',
             'pd_picht_quadril_7',
             'pe_pich_quadril_8',
+            # Rolls de quadril: verificados no robô, giram ao contrário do
+            # URDF. Os limites deles são simétricos (±LIMITE_RAD), então o
+            # clamp continua correto após a troca de sinal. Os SINAIS_ROLL do
+            # medir_roll/controle_pe foram ajustados junto, para o slider
+            # continuar movendo o robô no mesmo sentido físico de antes.
+            'pd_roll_quadril_9',
+            'pe_roll_quadril_10',
         }
 
         # --- Estado da conexão serial ---

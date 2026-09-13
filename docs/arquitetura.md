@@ -92,12 +92,18 @@ Para ativar uma junta nova (braços, pescoço): grave no motor o ID igual ao suf
 
 Quatro motores estão montados com o eixo de rotação **invertido** em relação ao URDF (as pernas foram construídas espelhadas no URDF, com o mesmo `axis xyz="0 0 1"` local apontando para lados opostos no mundo). Sem correção, o mesmo comando `+θ` gira o modelo no RViz para um lado e o motor real para o outro.
 
-| Junta invertida |
-|---|
-| `pd_picht_tornozelo_3` |
-| `pe_picht_tornozelo_4` |
-| `pd_picht_quadril_7` |
-| `pe_pich_quadril_8` |
+| Junta invertida | Movimento |
+|---|---|
+| `pd_picht_tornozelo_3` | tornozelo pitch direito |
+| `pe_picht_tornozelo_4` | tornozelo pitch esquerdo |
+| `pd_picht_quadril_7` | quadril pitch direito |
+| `pe_pich_quadril_8` | quadril pitch esquerdo |
+| `pd_roll_quadril_9` | quadril roll direito |
+| `pe_roll_quadril_10` | quadril roll esquerdo |
+
+Os **rolls de quadril** entraram na lista depois dos outros quatro, ao ser verificado no robô que giravam ao contrário do modelo. Os limites deles são simétricos (`±LIMITE_RAD`), então o clamp continua correto após a troca de sinal.
+
+Essa inclusão exigiu um ajuste conjunto: `SINAIS_ROLL`, em `medir_roll.py` e `controle_pe.py`, tinha `-1.0` para os dois rolls de quadril, calibrado empiricamente no robô real **antes** da inversão existir — ou seja, aquele sinal já compensava o problema no nível da aplicação. Com a inversão agora na fronteira do motor, os dois sinais passaram a `+1.0`, senão a correção seria aplicada duas vezes e o slider inclinaria o robô para o lado errado. O efeito físico dos sliders permanece idêntico ao da calibração de 2026-07-07; o que mudou é que agora o RViz também concorda com o robô.
 
 O `ax12_controller` corrige isso com o conjunto `juntas_invertidas`, trocando o sinal do ângulo **apenas na fronteira rad↔unidades do motor** (na escrita e na leitura de telemetria). Todo o resto do sistema — `joint_limits`, matrizes de marcha, `/joint_states`, RViz, MoveIt — permanece na convenção do URDF. É o mesmo papel do flag de direção por junta de um `SystemInterface` do `ros2_control`. Os `joint_limits` já estão gravados na convenção do URDF (medidos no motor e negados), então o clamp continua correto. Joelhos e rolls **não** são invertidos.
 
