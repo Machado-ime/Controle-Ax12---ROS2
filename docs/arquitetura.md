@@ -67,22 +67,26 @@ O "torque" é o **Present Load** — estimativa interna do AX-12 em % do torque 
 
 ### Mapa de juntas
 
-Os nomes seguem a convenção do URDF (`adam.urdf`): `{lado}_{movimento}_{segmento}_{N}`. O sufixo N é o ID de projeto no URDF e **não** é o ID físico do motor no barramento.
+Os nomes seguem a convenção do URDF (`adam.urdf`): `{lado}_{movimento}_{segmento}_{N}`. **O sufixo N é o ID do motor no barramento** — os motores foram regravados para que os dois números coincidam.
 
-| Junta | ID no barramento |
-|---|---|
-| `pd_picht_tornozelo_3` | 12 |
-| `pe_picht_tornozelo_4` | 17 |
-| `pd_roll_tornozelo_1`  | 13 |
-| `pe_roll_tornozelo_2`  | 18 |
-| `pd_picht_joelho_5`    | 11 |
-| `pe_picht_joelho_6`    | 16 |
-| `pd_picht_quadril_7`   | 10 |
-| `pe_pich_quadril_8`    | 15 |
-| `pd_roll_quadril_9`    | 9  |
-| `pe_roll_quadril_10`   | 14 |
+| Junta | ID no barramento | Lado | Movimento |
+|---|---|---|---|
+| `pd_roll_tornozelo_1`  | 1  | direita  | tornozelo roll |
+| `pe_roll_tornozelo_2`  | 2  | esquerda | tornozelo roll |
+| `pd_picht_tornozelo_3` | 3  | direita  | tornozelo pitch |
+| `pe_picht_tornozelo_4` | 4  | esquerda | tornozelo pitch |
+| `pd_picht_joelho_5`    | 5  | direita  | joelho pitch |
+| `pe_picht_joelho_6`    | 6  | esquerda | joelho pitch |
+| `pd_picht_quadril_7`   | 7  | direita  | quadril pitch |
+| `pe_pich_quadril_8`    | 8  | esquerda | quadril pitch |
+| `pd_roll_quadril_9`    | 9  | direita  | quadril roll |
+| `pe_roll_quadril_10`   | 10 | esquerda | quadril roll |
 
-Para ativar uma junta nova (braços, pescoço): adicione ao `joint_map` em `ax12_controller.py` sem repetir ID. Se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do YAML, na mesma posição.
+> **Convenção anterior:** até esta mudança os dois números eram independentes — o sufixo era um número de projeto do URDF e o ID físico era outro (`pd_picht_tornozelo_3` era o motor de ID 12, a numeração ia de 9 a 18). Matrizes de marcha, logs e anotações anteriores a esta data podem citar os IDs antigos.
+
+Ao **trocar um motor**, regrave o ID dele (Dynamixel Wizard ou `write1ByteTxRx` no endereço 3) para casar com o sufixo da junta, em vez de editar o `joint_map`.
+
+Para ativar uma junta nova (braços, pescoço): grave no motor o ID igual ao sufixo do nome no URDF — os sufixos 11 a 16 já estão reservados para ombros e cotovelos — e acrescente a junta ao `joint_map` em `ax12_controller.py`. Se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do YAML, na mesma posição.
 
 ### Juntas com eixo invertido
 

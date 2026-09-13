@@ -150,24 +150,25 @@ class AX12HardwareInterface(Node):
 
         # Mapa das juntas (nome ROS -> ID do motor no barramento).
         # Nomes seguem a convenção do URDF (adam.urdf): {lado}_{movimento}_{segmento}_{N}.
-        # O sufixo N é o ID de projeto no URDF e NÃO o ID físico do motor no
-        # barramento (ex.: pd_picht_tornozelo_3 é o motor de ID 12).
-        # O ID que vale é sempre o número à direita.
+        # Os motores foram regravados para que o ID no barramento SEJA o sufixo N
+        # do nome: pd_picht_tornozelo_3 é o ID 3, pe_roll_quadril_10 é o ID 10.
+        # Antes os dois números eram diferentes (o 3 era o motor de ID 12), o que
+        # já custou horas de diagnóstico. Ao trocar um motor, regrave o ID dele
+        # para casar com o sufixo em vez de editar este mapa.
         self.joint_map = {
-            'pd_picht_tornozelo_3': 12,
-            'pe_picht_tornozelo_4': 17,
-            'pd_roll_tornozelo_1': 13,
-            'pe_roll_tornozelo_2': 18,   # recebem torque e seguram a posição
-            'pd_picht_joelho_5': 11,
-            'pe_picht_joelho_6': 16,
-            'pd_picht_quadril_7': 10,
-            'pe_pich_quadril_8': 15,
+            'pd_picht_tornozelo_3': 3,
+            'pe_picht_tornozelo_4': 4,
+            'pd_roll_tornozelo_1': 1,
+            'pe_roll_tornozelo_2': 2,    # recebem torque e seguram a posição
+            'pd_picht_joelho_5': 5,
+            'pe_picht_joelho_6': 6,
+            'pd_picht_quadril_7': 7,
+            'pe_pich_quadril_8': 8,
             'pd_roll_quadril_9': 9,      # quadril roll: novo, sem medição ainda
-            'pe_roll_quadril_10': 14,    # (fora da marcha; segura posição)
-            # Juntas ainda sem ID no barramento atual (braços, pescoço):
-            # adicione aqui quando forem ligadas — cuidado para NÃO repetir
-            # um ID já usado acima (ID duplicado = dois nomes comandando o
-            # mesmo motor físico).
+            'pe_roll_quadril_10': 10,    # (fora da marcha; segura posição)
+            # Juntas ainda sem ID no barramento (braços, pescoço): os sufixos
+            # 11 a 16 do URDF (ombros e cotovelos) ficam reservados para elas,
+            # e a mesma regra vale — grave no motor o ID igual ao sufixo.
         }
         self.active_ids = list(self.joint_map.values())
 
