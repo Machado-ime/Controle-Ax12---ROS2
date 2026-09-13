@@ -58,6 +58,17 @@ arquivo: ver `git log`.
   o `controller_manager` e os `JointTrajectoryController`s sozinho, sem MoveIt2. Planejamento
   de movimento (`move_group`) fica indisponível até o pacote ser regenerado.
 
+### Corrigido
+- `display.launch.py` (pacote `adam_description`): o argumento `use_gui_sliders` nunca existiu
+  no código, apesar de estar documentado em `src/README.md`, `docs/adr.md`,
+  `docs/arquitetura.md` e neste CHANGELOG — o `joint_state_publisher_gui` subia sempre. Como o
+  `ros2 launch` **ignora silenciosamente** argumento não declarado (sem aviso, sem erro), quem
+  rodava `display.launch.py use_gui_sliders:=false` para espelhar o robô real ganhava os
+  sliders de qualquer forma, ou seja, exatamente os dois publishers competindo em
+  `/joint_states` que o argumento existia para evitar: os sliders (posição alvo) e o
+  `ax12_controller` (posição real, da telemetria). O argumento agora é declarado de fato, com
+  `IfCondition` no nó do slider, e o launch ganhou docstring com os dois modos de uso.
+
 ### Adicionado
 - `cin_inve_2.yaml` — marcha completa por ZMP (10 juntas x 8 etapas), gerada de
   `cin_ive_2.mat`, mesma estrutura da `matriz_zmp` mas com amplitude de passada maior nas
