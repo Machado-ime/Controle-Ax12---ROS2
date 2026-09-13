@@ -74,8 +74,10 @@ except ImportError:
 SINAIS_ROLL = {
     'pd_roll_tornozelo_1': -1.0,
     'pe_roll_tornozelo_2': -1.0,
-    'pd_roll_quadril_9':   -1.0,
-    'pe_roll_quadril_10':  -1.0,
+    # +1 nos rolls de QUADRIL porque eles passaram a ser invertidos no
+    # ax12_controller (juntas_invertidas); ver a explicação no medir_roll.
+    'pd_roll_quadril_9':   +1.0,
+    'pe_roll_quadril_10':  +1.0,
 }
 
 # Curso dos controles

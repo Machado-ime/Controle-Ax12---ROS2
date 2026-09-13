@@ -67,33 +67,43 @@ O "torque" é o **Present Load** — estimativa interna do AX-12 em % do torque 
 
 ### Mapa de juntas
 
-Os nomes seguem a convenção do URDF (`adam.urdf`): `{lado}_{movimento}_{segmento}_{N}`. O sufixo N é o ID de projeto no URDF e **não** é o ID físico do motor no barramento.
+Os nomes seguem a convenção do URDF (`adam.urdf`): `{lado}_{movimento}_{segmento}_{N}`. **O sufixo N é o ID do motor no barramento** — os motores foram regravados para que os dois números coincidam.
 
-| Junta | ID no barramento |
-|---|---|
-| `pd_picht_tornozelo_3` | 12 |
-| `pe_picht_tornozelo_4` | 17 |
-| `pd_roll_tornozelo_1`  | 13 |
-| `pe_roll_tornozelo_2`  | 18 |
-| `pd_picht_joelho_5`    | 11 |
-| `pe_picht_joelho_6`    | 16 |
-| `pd_picht_quadril_7`   | 10 |
-| `pe_pich_quadril_8`    | 15 |
-| `pd_roll_quadril_9`    | 9  |
-| `pe_roll_quadril_10`   | 14 |
+| Junta | ID no barramento | Lado | Movimento |
+|---|---|---|---|
+| `pd_roll_tornozelo_1`  | 1  | direita  | tornozelo roll |
+| `pe_roll_tornozelo_2`  | 2  | esquerda | tornozelo roll |
+| `pd_picht_tornozelo_3` | 3  | direita  | tornozelo pitch |
+| `pe_picht_tornozelo_4` | 4  | esquerda | tornozelo pitch |
+| `pd_picht_joelho_5`    | 5  | direita  | joelho pitch |
+| `pe_picht_joelho_6`    | 6  | esquerda | joelho pitch |
+| `pd_picht_quadril_7`   | 7  | direita  | quadril pitch |
+| `pe_pich_quadril_8`    | 8  | esquerda | quadril pitch |
+| `pd_roll_quadril_9`    | 9  | direita  | quadril roll |
+| `pe_roll_quadril_10`   | 10 | esquerda | quadril roll |
 
-Para ativar uma junta nova (braços, pescoço): adicione ao `joint_map` em `ax12_controller.py` sem repetir ID. Se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do YAML, na mesma posição.
+> **Convenção anterior:** até esta mudança os dois números eram independentes — o sufixo era um número de projeto do URDF e o ID físico era outro (`pd_picht_tornozelo_3` era o motor de ID 12, a numeração ia de 9 a 18). Matrizes de marcha, logs e anotações anteriores a esta data podem citar os IDs antigos.
+
+Ao **trocar um motor**, regrave o ID dele (Dynamixel Wizard ou `write1ByteTxRx` no endereço 3) para casar com o sufixo da junta, em vez de editar o `joint_map`.
+
+Para ativar uma junta nova (braços, pescoço): grave no motor o ID igual ao sufixo do nome no URDF — os sufixos 11 a 16 já estão reservados para ombros e cotovelos — e acrescente a junta ao `joint_map` em `ax12_controller.py`. Se ela deve se mover na marcha, acrescente o nome em `nomes_juntas` e uma linha na `matriz_movimento` do YAML, na mesma posição.
 
 ### Juntas com eixo invertido
 
 Quatro motores estão montados com o eixo de rotação **invertido** em relação ao URDF (as pernas foram construídas espelhadas no URDF, com o mesmo `axis xyz="0 0 1"` local apontando para lados opostos no mundo). Sem correção, o mesmo comando `+θ` gira o modelo no RViz para um lado e o motor real para o outro.
 
-| Junta invertida |
-|---|
-| `pd_picht_tornozelo_3` |
-| `pe_picht_tornozelo_4` |
-| `pd_picht_quadril_7` |
-| `pe_pich_quadril_8` |
+| Junta invertida | Movimento |
+|---|---|
+| `pd_picht_tornozelo_3` | tornozelo pitch direito |
+| `pe_picht_tornozelo_4` | tornozelo pitch esquerdo |
+| `pd_picht_quadril_7` | quadril pitch direito |
+| `pe_pich_quadril_8` | quadril pitch esquerdo |
+| `pd_roll_quadril_9` | quadril roll direito |
+| `pe_roll_quadril_10` | quadril roll esquerdo |
+
+Os **rolls de quadril** entraram na lista depois dos outros quatro, ao ser verificado no robô que giravam ao contrário do modelo. Os limites deles são simétricos (`±LIMITE_RAD`), então o clamp continua correto após a troca de sinal.
+
+Essa inclusão exigiu um ajuste conjunto: `SINAIS_ROLL`, em `medir_roll.py` e `controle_pe.py`, tinha `-1.0` para os dois rolls de quadril, calibrado empiricamente no robô real **antes** da inversão existir — ou seja, aquele sinal já compensava o problema no nível da aplicação. Com a inversão agora na fronteira do motor, os dois sinais passaram a `+1.0`, senão a correção seria aplicada duas vezes e o slider inclinaria o robô para o lado errado. O efeito físico dos sliders permanece idêntico ao da calibração de 2026-07-07; o que mudou é que agora o RViz também concorda com o robô.
 
 O `ax12_controller` corrige isso com o conjunto `juntas_invertidas`, trocando o sinal do ângulo **apenas na fronteira rad↔unidades do motor** (na escrita e na leitura de telemetria). Todo o resto do sistema — `joint_limits`, matrizes de marcha, `/joint_states`, RViz, MoveIt — permanece na convenção do URDF. É o mesmo papel do flag de direção por junta de um `SystemInterface` do `ros2_control`. Os `joint_limits` já estão gravados na convenção do URDF (medidos no motor e negados), então o clamp continua correto. Joelhos e rolls **não** são invertidos.
 
@@ -111,8 +121,34 @@ ros2 run ax12_control ax12_controller --ros-args \
   -p tentativas_abertura:=5 \   # tentativas ao iniciar
   -p max_falhas_reconexao:=10 \ # desiste após N falhas
   -p velocidade_padrao:=100 \   # usado se a msg vier sem velocities
-  -p taxa_leitura:=5.0          # Hz da telemetria (0 desliga)
+  -p taxa_leitura:=5.0 \        # Hz da telemetria (0 desliga)
+  -p ligar_torque:=false        # modo observador (padrão true)
 ```
+
+### Modo observador (`ligar_torque:=false`)
+
+Por padrão o nó liga o torque de todos os motores ao iniciar. Com `ligar_torque:=false` ele
+vira **somente-leitura**: publica `/joint_states` e `/diagnostics` normalmente, mas não escreve
+nada no barramento.
+
+| Comportamento | `ligar_torque:=true` (padrão) | `ligar_torque:=false` |
+|---|---|---|
+| Ao iniciar | liga o torque motor a motor | só lê Present Position para conferir quem responde |
+| Ao reconectar a porta | religa o torque | só reconfere a presença |
+| Comando em `/joint_trajectory` | escreve posição e velocidade | descarta, com um aviso único em `/hardware_errors` |
+| Ao encerrar | desliga o torque | não toca no torque |
+
+Para que serve:
+
+- **Espelho de bancada** — mova o robô com a mão e veja o modelo acompanhar no RViz, sem
+  motor energizado. Combine com `ros2 launch adam_description display.launch.py use_gui_sliders:=false`.
+- **Diagnóstico de barramento** — verifica quem responde sem colocar carga na fonte. Útil
+  quando há suspeita de que a alimentação não sustenta os motores sob torque.
+- **Segurança em bancada** — um robô que ninguém energizou não cede quando o nó é encerrado.
+
+O descarte de comandos é deliberado, e não apenas "deixar de ligar o torque": o AX-12 aceita
+`Goal Position` mesmo com o torque desligado e **guarda o valor**. Um comando aceito no modo
+observador viraria um salto brusco no instante em que alguém ligasse o torque depois.
 
 ---
 

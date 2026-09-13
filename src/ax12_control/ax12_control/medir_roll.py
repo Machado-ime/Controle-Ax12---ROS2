@@ -54,8 +54,13 @@ except ImportError:
 SINAIS_ROLL = {
     'pd_roll_tornozelo_1': -1.0,
     'pe_roll_tornozelo_2': -1.0,
-    'pd_roll_quadril_9':   -1.0,
-    'pe_roll_quadril_10':  -1.0,
+    # Os dois rolls de QUADRIL entraram em juntas_invertidas no ax12_controller
+    # (o motor gira ao contrário do URDF). Como a inversão agora acontece lá, na
+    # fronteira com o motor, estes sinais foram trocados de -1 para +1 para o
+    # slider continuar inclinando o robô no mesmo sentido físico da calibração
+    # de 2026-07-07 — sem isso a correção seria aplicada duas vezes.
+    'pd_roll_quadril_9':   +1.0,
+    'pe_roll_quadril_10':  +1.0,
 }
 
 # Curso do slider: ±30°. O limite mecânico mais apertado é o roll de
