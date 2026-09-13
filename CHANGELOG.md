@@ -58,6 +58,31 @@ arquivo: ver `git log`.
   o `controller_manager` e os `JointTrajectoryController`s sozinho, sem MoveIt2. Planejamento
   de movimento (`move_group`) fica indisponível até o pacote ser regenerado.
 
+### Removido
+- Suporte a MX-28 no `ax12_controller.py`. Os dois motores MX-28 saíram do projeto; o
+  barramento é 100% AX-12A, confirmado lendo o registrador Model Number (end. 0) de cada um
+  dos 10 IDs — todos responderam `12` (AX-12A), inclusive os IDs 12 e 13, que o `joint_model`
+  ainda declarava como `MX28`. Enquanto durou a divergência, essas duas juntas usavam a escala
+  errada (4095/360° em vez de 1023/300°): a telemetria reportava
+  `pd_picht_tornozelo_3 = +2,230 rad` (127,8°) e `pd_roll_tornozelo_1 = -2,365 rad` (-135,5°),
+  ambas fora dos limites mecânicos, e o RViz espelhava essa pose impossível; na escrita, o
+  mesmo erro de escala mandaria o motor para ~3,3x o ângulo pedido. Com a correção as leituras
+  passaram a `-0,422 rad` e `-0,028 rad`, dentro dos limites. Removidos o dicionário
+  `joint_model`, a entrada `MX28` de `MODELOS` e as menções ao modelo no docstring/comentários;
+  a parametrização por modelo em `MODELOS` continua de pé para o caso de um motor de outra
+  resolução ser instalado.
+
+### Corrigido
+- `display.launch.py` (pacote `adam_description`): o argumento `use_gui_sliders` nunca existiu
+  no código, apesar de estar documentado em `src/README.md`, `docs/adr.md`,
+  `docs/arquitetura.md` e neste CHANGELOG — o `joint_state_publisher_gui` subia sempre. Como o
+  `ros2 launch` **ignora silenciosamente** argumento não declarado (sem aviso, sem erro), quem
+  rodava `display.launch.py use_gui_sliders:=false` para espelhar o robô real ganhava os
+  sliders de qualquer forma, ou seja, exatamente os dois publishers competindo em
+  `/joint_states` que o argumento existia para evitar: os sliders (posição alvo) e o
+  `ax12_controller` (posição real, da telemetria). O argumento agora é declarado de fato, com
+  `IfCondition` no nó do slider, e o launch ganhou docstring com os dois modos de uso.
+
 ### Adicionado
 - `cin_inve_2.yaml` — marcha completa por ZMP (10 juntas x 8 etapas), gerada de
   `cin_ive_2.mat`, mesma estrutura da `matriz_zmp` mas com amplitude de passada maior nas
