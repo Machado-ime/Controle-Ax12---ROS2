@@ -1,20 +1,19 @@
-"""Interface de hardware ROS 2 para servomotores Dynamixel AX-12 e MX-28.
+"""Interface de hardware ROS 2 para servomotores Dynamixel AX-12.
 
 Este nó é o ÚNICO processo que toca o barramento serial dos motores.
 Ele assina /joint_trajectory (posições em rad, velocidades em rad/s),
-converte para as unidades do motor de CADA junta (AX-12 ou MX-28 —
-resoluções diferentes, ver MODELOS) e escreve tudo num único pacote
-SyncWrite. Falhas de hardware são publicadas em /hardware_errors.
+converte para as unidades do motor (ver MODELOS) e escreve tudo num
+único pacote SyncWrite. Falhas de hardware são publicadas em
+/hardware_errors.
 
-Os dois modelos falam Protocolo 1.0 e usam os MESMOS endereços de
-tabela de controle (Torque Enable=24, Goal Position=30, Moving
-Speed=32, Present Position=36) — só a escala de posição/velocidade
-muda, por isso a conversão rad<->unidades é parametrizada por modelo
-em vez de constante global.
+As 10 juntas são AX-12A (Protocolo 1.0) — confirmado lendo o registrador
+Model Number (end. 0) de cada ID do barramento. A conversão rad<->unidades
+fica parametrizada em MODELOS, e não em constante solta, para o dia em que
+um motor de outra resolução for instalado: basta acrescentar a entrada e
+apontar a junta para ela nos dois pontos marcados com "modelo = ".
 
-Referências das tabelas de controle:
+Referência da tabela de controle:
 https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
-https://emanual.robotis.com/docs/en/dxl/mx/mx-28/
 """
 
 import math
@@ -62,18 +61,16 @@ LEN_GOAL_POS_E_SPEED    = 4
 ADDR_PRESENT_POSITION   = 36
 LEN_BLOCO_TELEMETRIA    = 8
 
-# Nem AX-12 nem MX-28 têm sensor de torque verdadeiro: o Present Load
-# (end. 40) é a estimativa interna do esforço, em % do torque máximo.
-# Convertemos para N·m usando o stall torque nominal de CADA modelo
-# (aproximação) — ver 'torque_max_nm' em MODELOS.
+# O AX-12 não tem sensor de torque verdadeiro: o Present Load (end. 40)
+# é a estimativa interna do esforço, em % do torque máximo. Convertemos
+# para N·m usando o stall torque nominal (aproximação) — ver
+# 'torque_max_nm' em MODELOS.
 
 # =====================================================================
-# Fatores de conversão (unidades do ROS <-> unidades do motor), POR
-# MODELO — AX-12 é 0-1023 sobre 300° (curso útil ±150°); MX-28 é
-# 0-4095 sobre 360° (curso útil ±180°). Ambos protocolo 1.0, mesmos
-# endereços de tabela de controle (só a escala muda).
+# Fatores de conversão (unidades do ROS <-> unidades do motor):
+# AX-12 é 0-1023 sobre 300° (curso útil ±150°), Protocolo 1.0.
 # =====================================================================
-LIMITE_RAD = 2.618   # mantido para retrocompatibilidade (default = AX-12)
+LIMITE_RAD = 2.618   # ±150°, o curso útil do AX-12
 
 MODELOS = {
     'AX12': dict(
@@ -81,12 +78,6 @@ MODELOS = {
         max_pos=1023,
         unidades_por_rad_s=86.03,     # rad/s -> unidades (1 un. = 0,111 rpm)
         torque_max_nm=1.5,            # stall torque nominal a 12 V
-    ),
-    'MX28': dict(
-        limite_rad=math.pi,           # ±180° (curso útil 0-360°)
-        max_pos=4095,
-        unidades_por_rad_s=83.76,     # rad/s -> unidades (1 un. = 0,114 rpm)
-        torque_max_nm=2.5,            # stall torque nominal a 12 V
     ),
 }
 for _cfg in MODELOS.values():
@@ -147,9 +138,9 @@ class AX12HardwareInterface(Node):
         # barramento (ex.: pd_picht_tornozelo_3 é o motor de ID 12).
         # O ID que vale é sempre o número à direita.
         self.joint_map = {
-            'pd_picht_tornozelo_3': 12,  # MX-28 (trocado; era AX-12)
+            'pd_picht_tornozelo_3': 12,
             'pe_picht_tornozelo_4': 17,
-            'pd_roll_tornozelo_1': 13,   # MX-28 (trocado; manteve o ID do AX-12 anterior)
+            'pd_roll_tornozelo_1': 13,
             'pe_roll_tornozelo_2': 18,   # recebem torque e seguram a posição
             'pd_picht_joelho_5': 11,
             'pe_picht_joelho_6': 16,
@@ -163,14 +154,6 @@ class AX12HardwareInterface(Node):
             # mesmo motor físico).
         }
         self.active_ids = list(self.joint_map.values())
-
-        # Modelo do motor por junta — só as trocadas por MX-28 aparecem aqui;
-        # qualquer junta ausente é AX-12 por padrão (ver MODELOS acima).
-        # Atualize junto com joint_map sempre que trocar mais motores.
-        self.joint_model = {
-            'pd_picht_tornozelo_3': 'MX28',
-            'pd_roll_tornozelo_1': 'MX28',
-        }
 
         # Limites de posição por junta (rad) medidos no hardware e convertidos via:
         #   rad = (grau_AX12 - 150) * pi/180
@@ -425,7 +408,7 @@ class AX12HardwareInterface(Node):
             if joint_name not in self.joint_map:
                 continue
             dxl_id = self.joint_map[joint_name]
-            modelo = MODELOS[self.joint_model.get(joint_name, 'AX12')]
+            modelo = MODELOS['AX12']   # todas as juntas são AX-12
 
             # --- CLAMP POR JUNTA (limites mecânicos do URDF) ---
             low, high = self.joint_limits.get(
@@ -509,7 +492,7 @@ class AX12HardwareInterface(Node):
                         f'a leitura ha {falhas} ciclos seguidos.')
                 continue
             self._falhas_leitura[dxl_id] = 0
-            modelo = MODELOS[self.joint_model.get(joint_name, 'AX12')]
+            modelo = MODELOS['AX12']   # todas as juntas são AX-12
 
             # --- Conversões (inverso das fórmulas de escrita) ---
             pos_raw = DXL_MAKEWORD(dados[0], dados[1])
