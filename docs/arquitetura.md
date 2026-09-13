@@ -111,8 +111,34 @@ ros2 run ax12_control ax12_controller --ros-args \
   -p tentativas_abertura:=5 \   # tentativas ao iniciar
   -p max_falhas_reconexao:=10 \ # desiste após N falhas
   -p velocidade_padrao:=100 \   # usado se a msg vier sem velocities
-  -p taxa_leitura:=5.0          # Hz da telemetria (0 desliga)
+  -p taxa_leitura:=5.0 \        # Hz da telemetria (0 desliga)
+  -p ligar_torque:=false        # modo observador (padrão true)
 ```
+
+### Modo observador (`ligar_torque:=false`)
+
+Por padrão o nó liga o torque de todos os motores ao iniciar. Com `ligar_torque:=false` ele
+vira **somente-leitura**: publica `/joint_states` e `/diagnostics` normalmente, mas não escreve
+nada no barramento.
+
+| Comportamento | `ligar_torque:=true` (padrão) | `ligar_torque:=false` |
+|---|---|---|
+| Ao iniciar | liga o torque motor a motor | só lê Present Position para conferir quem responde |
+| Ao reconectar a porta | religa o torque | só reconfere a presença |
+| Comando em `/joint_trajectory` | escreve posição e velocidade | descarta, com um aviso único em `/hardware_errors` |
+| Ao encerrar | desliga o torque | não toca no torque |
+
+Para que serve:
+
+- **Espelho de bancada** — mova o robô com a mão e veja o modelo acompanhar no RViz, sem
+  motor energizado. Combine com `ros2 launch adam_description display.launch.py use_gui_sliders:=false`.
+- **Diagnóstico de barramento** — verifica quem responde sem colocar carga na fonte. Útil
+  quando há suspeita de que a alimentação não sustenta os motores sob torque.
+- **Segurança em bancada** — um robô que ninguém energizou não cede quando o nó é encerrado.
+
+O descarte de comandos é deliberado, e não apenas "deixar de ligar o torque": o AX-12 aceita
+`Goal Position` mesmo com o torque desligado e **guarda o valor**. Um comando aceito no modo
+observador viraria um salto brusco no instante em que alguém ligasse o torque depois.
 
 ---
 

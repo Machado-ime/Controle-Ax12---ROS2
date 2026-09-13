@@ -12,6 +12,11 @@ fica parametrizada em MODELOS, e não em constante solta, para o dia em que
 um motor de outra resolução for instalado: basta acrescentar a entrada e
 apontar a junta para ela nos dois pontos marcados com "modelo = ".
 
+Com `-p ligar_torque:=false` o nó vira SOMENTE-LEITURA: publica a telemetria
+mas não escreve nada no barramento — não liga o torque, não o desliga ao
+sair e descarta comandos. Serve para espelhar no RViz um robô movido à mão
+e para diagnosticar o barramento sem energizar os motores.
+
 Referência da tabela de controle:
 https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
 """
@@ -126,11 +131,22 @@ class AX12HardwareInterface(Node):
         # antigo, que nao responde no ID 200).
         self.declare_parameter('taxa_imu', 0.0)             # Hz da leitura do IMU
         self.declare_parameter('imu_frame_id', 'imu_link')
+        # MODO OBSERVADOR: com ligar_torque:=false o nó vira somente-leitura —
+        # não liga o torque ao iniciar, não religa ao reconectar, não desliga
+        # ao sair e DESCARTA comandos de /joint_trajectory. Serve para espelhar
+        # no RViz um robô movido à mão, e para diagnosticar barramento sem
+        # energizar os motores. O descarte de comandos não é preciosismo: o
+        # AX-12 aceita Goal Position com torque desligado e guarda o valor,
+        # então um comando recebido agora viraria um salto brusco no instante
+        # em que alguém ligasse o torque depois.
+        self.declare_parameter('ligar_torque', True)
 
         self.device = self.get_parameter('device').value
         self.baudrate = self.get_parameter('baudrate').value
         self.velocidade_padrao = self.get_parameter('velocidade_padrao').value
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
+        self.ligar_torque = self.get_parameter('ligar_torque').value
+        self._avisou_observador = False   # o aviso de comando descartado sai uma vez só
 
         # Mapa das juntas (nome ROS -> ID do motor no barramento).
         # Nomes seguem a convenção do URDF (adam.urdf): {lado}_{movimento}_{segmento}_{N}.
@@ -228,9 +244,16 @@ class AX12HardwareInterface(Node):
             # O main() captura este erro e encerra de forma limpa.
             raise RuntimeError(f'Nao foi possivel abrir a porta {self.device}.')
 
-        # 2. Liga o torque dos motores mapeados
-        self._ligar_torque()
-        self.get_logger().info('Torque LIGADO. Pronto para receber e escrever comandos.')
+        # 2. Liga o torque dos motores mapeados (ou só confere quem responde,
+        #    no modo observador)
+        if self.ligar_torque:
+            self._ligar_torque()
+            self.get_logger().info('Torque LIGADO. Pronto para receber e escrever comandos.')
+        else:
+            self._verificar_presenca()
+            self.get_logger().info(
+                'MODO OBSERVADOR (ligar_torque:=false): torque intocado, comandos '
+                'descartados. Só telemetria — mova o robô à mão e veja no RViz.')
 
         # --- PERFIL DE REDE (QoS) BLINDADO PARA WI-FI ---
         # BEST_EFFORT + fila de 1: comando perdido é descartado, nunca
@@ -339,6 +362,39 @@ class AX12HardwareInterface(Node):
                 f'Apenas {conectados}/{total} motores responderam! '
                 'Verifique cabo, energia e IDs dos ausentes.')
 
+    def _verificar_presenca(self):
+        """Modo observador: confere quem responde SEM escrever em registrador.
+
+        Faz o papel do resumo X/N do _ligar_torque, mas lendo Present Position
+        em vez de escrever Torque Enable — assim o nó nunca toca no estado dos
+        motores quando ligar_torque:=false.
+        """
+        conectados = 0
+        for joint_name, dxl_id in self.joint_map.items():
+            try:
+                _, result, _ = self.packetHandler.read2ByteTxRx(
+                    self.portHandler, dxl_id, ADDR_PRESENT_POSITION)
+            except (serial.SerialException, OSError):
+                self._porta_caiu('ao verificar a presenca dos motores')
+                return
+            if result != COMM_SUCCESS:
+                self._avisar_erro(
+                    f'Motor ID {dxl_id} ({joint_name}) NAO respondeu: '
+                    f'{self.packetHandler.getTxRxResult(result)}')
+            else:
+                conectados += 1
+                self.get_logger().info(
+                    f'Motor ID {dxl_id} ({joint_name}): presente (torque intocado).')
+            time.sleep(0.05)   # mesmo espaçamento do _ligar_torque
+
+        total = len(self.joint_map)
+        if conectados == total:
+            self.get_logger().info(f'Todos os {total} motores presentes.')
+        else:
+            self._avisar_erro(
+                f'Apenas {conectados}/{total} motores responderam! '
+                'Verifique cabo, energia e IDs dos ausentes.')
+
     def _porta_caiu(self, contexto):
         """Marca a porta como caída e avisa. A reconexão acontece no callback."""
         self.port_ok = False
@@ -354,9 +410,14 @@ class AX12HardwareInterface(Node):
 
         if self._abrir_porta():
             self.falhas_reconexao = 0
-            self._avisar_erro('Porta serial RECONECTADA. Religando o torque dos motores.')
-            # Se os motores perderam energia no evento, voltaram com torque OFF
-            self._ligar_torque()
+            if self.ligar_torque:
+                self._avisar_erro('Porta serial RECONECTADA. Religando o torque dos motores.')
+                # Se os motores perderam energia no evento, voltaram com torque OFF
+                self._ligar_torque()
+            else:
+                self._avisar_erro('Porta serial RECONECTADA (modo observador: '
+                                  'torque intocado).')
+                self._verificar_presenca()
             return
 
         self.falhas_reconexao += 1
@@ -373,6 +434,18 @@ class AX12HardwareInterface(Node):
     def listener_callback(self, msg):
         # Falha fatal anterior: ignora tudo até o nó ser reiniciado
         if self.desativado:
+            return
+
+        # Modo observador: nao escreve NADA no barramento. Descartar aqui (e
+        # nao so deixar de ligar o torque) evita deixar um Goal Position
+        # engatilhado, que viraria um salto quando alguem ligasse o torque.
+        if not self.ligar_torque:
+            if not self._avisou_observador:
+                self._avisou_observador = True
+                self._avisar_erro(
+                    'Comando em /joint_trajectory DESCARTADO: no em modo '
+                    'observador (ligar_torque:=false). Reinicie sem esse '
+                    'parametro para mover os motores.')
             return
 
         # Porta caída: usa a chegada de cada comando como gatilho de reconexão
@@ -640,6 +713,17 @@ class AX12HardwareInterface(Node):
     # =================================================================
 
     def destroy_node(self):
+        # Modo observador: o nó não ligou o torque, então também não o desliga —
+        # sai deixando o barramento exatamente como encontrou.
+        if not self.ligar_torque:
+            if self.port_ok:
+                try:
+                    self.portHandler.closePort()
+                except (serial.SerialException, OSError):
+                    pass
+            super().destroy_node()
+            return
+
         # Só toca na serial se ela estiver viva (evita traceback no Ctrl+C
         # quando a porta nunca abriu ou caiu no meio da operação)
         if self.port_ok:
