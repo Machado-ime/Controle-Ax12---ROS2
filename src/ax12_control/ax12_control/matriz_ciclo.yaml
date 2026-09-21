@@ -1,0 +1,42 @@
+# Matriz de marcha gerada a partir de matriz_ciclo.mat (MATLAB).
+# Ciclo completo de 8 etapas; angulos em RADIANOS, convencao do URDF.
+#
+# Colunas (etapas do ciclo):
+#   0: 1 PD frente, roll 0
+#   1: 2 PD frente, peso dir
+#   2: 3 PE no ar
+#   3: 4 PE frente, peso dir
+#   4: 5 PE frente, roll 0
+#   5: 6 PE frente, peso esq
+#   6: 7 PD no ar
+#   7: 8 PD frente, peso esq
+#
+# Rodar:
+#   ros2 launch ax12_control visualizar_marcha.launch.py matriz:=matriz_ciclo
+
+passo: 1.0      # segundos por transicao
+pausa: 0.5      # repouso extra apos cada transicao
+
+nomes_juntas:
+  - pd_roll_tornozelo_1    # ID 1
+  - pe_roll_tornozelo_2    # ID 2
+  - pd_picht_tornozelo_3    # ID 3
+  - pe_picht_tornozelo_4    # ID 4
+  - pd_picht_joelho_5    # ID 5
+  - pe_picht_joelho_6    # ID 6
+  - pd_picht_quadril_7    # ID 7
+  - pe_pich_quadril_8    # ID 8
+  - pd_roll_quadril_9    # ID 9
+  - pe_roll_quadril_10    # ID 10
+
+matriz_movimento:
+  - [ 0.0000, -0.1745, -0.1745, -0.1745, -0.0000,  0.1745,  0.1745,  0.1745]  # pd_roll_tornozelo_1
+  - [ 0.0000, -0.1745, -0.1745, -0.1745,  0.0000,  0.1745,  0.1745,  0.1745]  # pe_roll_tornozelo_2
+  - [-0.3921, -0.3919, -0.5571, -0.7010, -0.7015, -0.6335, -0.7406, -0.3267]  # pd_picht_tornozelo_3
+  - [ 0.7088,  0.6398,  0.7500,  0.3365,  0.4022,  0.4019,  0.5661,  0.7088]  # pe_picht_tornozelo_4
+  - [ 1.3826,  1.3819,  1.4746,  1.5146,  1.5154,  1.3759,  1.9012,  1.2299]  # pd_picht_joelho_5
+  - [-1.5162, -1.3756, -1.9037, -1.2365, -1.3895, -1.3894, -1.4790, -1.5162]  # pe_picht_joelho_6
+  - [-0.9905, -0.9900, -0.9174, -0.8136, -0.8141, -0.7426, -1.1607, -0.9031]  # pd_picht_quadril_7
+  - [ 0.8074,  0.7357,  1.1539,  0.9001,  0.9874,  0.9874,  0.9129,  0.8074]  # pe_pich_quadril_8
+  - [ 0.0000,  0.1745,  0.1745,  0.1745, -0.0000, -0.1745, -0.1745, -0.1745]  # pd_roll_quadril_9
+  - [ 0.0000,  0.1745,  0.1745,  0.1745,  0.0000, -0.1745, -0.1745, -0.1745]  # pe_roll_quadril_10
