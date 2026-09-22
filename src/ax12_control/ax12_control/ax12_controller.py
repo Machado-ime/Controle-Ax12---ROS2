@@ -69,16 +69,45 @@ from dynamixel_sdk import (
     DXL_MAKEWORD,
 )
 
-# O SDK Python crava LATENCY_TIMER = 16 ms na fórmula de timeout de pacote
-# (port_handler.setPacketTimeout: tx + LATENCY_TIMER*2 + 2). Com esse valor,
-# CADA leitura que falha custa ~34 ms: 10 motores mudos gastam 341 ms e
-# estouram o período de 200 ms do timer de telemetria, saturando o executor
-# e atrasando os comandos. Baixar para 4 ms só é seguro porque _abrir_porta()
-# liga o modo de baixa latência da porta (latência real ~1 ms).
-# O patch é no módulo, e não no import, porque a fórmula lê a constante do
-# escopo do módulo a cada chamada.
+# Orçamento de timeout de pacote do SDK. A fórmula é
+# port_handler.setPacketTimeout: tx + LATENCY_TIMER*2 + 2 (ms).
+#
+# Os 16 ms cravados no SDK são herança de adaptadores FTDI, que de fato
+# seguram os bytes por esse tempo. Com eles, CADA leitura que falha custa
+# ~34 ms: 10 motores mudos gastam 341 ms e estouram o período de 200 ms do
+# timer de telemetria, saturando o executor e atrasando os comandos.
+#
+# Encurtar o orçamento só é seguro quando a latência real for mesmo baixa.
+# Por isso o valor NÃO é escolhido aqui: quem decide é _abrir_porta(), depois
+# de saber se set_low_latency_mode() funcionou naquela porta. Com 16 ms de
+# latência real e 4 ms de orçamento, uma resposta VÁLIDA expiraria e o motor
+# seria reportado como mudo — fabricando exatamente o sintoma que este nó
+# existe para diagnosticar.
+#
+# RESSALVA: set_low_latency_mode() retornar sem exceção NÃO prova que a
+# latência caiu. No cdc_acm o ioctl é aceito, mas o flag ASYNC_LOW_LATENCY já
+# não tem efeito real no kernel moderno — ele pode ter sucesso sendo um no-op.
+# A escolha continua segura, só que por outro motivo: o cdc_acm não tem o
+# buffering de 16 ms do FTDI (entrega os URBs a cada frame USB, ~1 ms), então
+# 4 ms bastam ali de qualquer forma; e o FTDI, que realmente segura 16 ms, é
+# justamente o driver que honra o flag. Um adaptador exótico que faça as duas
+# coisas (segurar bytes E aceitar o flag sem efeito) cairia nessa brecha.
+#
+# O valor é escrito no MÓDULO (_dxl_port_handler.LATENCY_TIMER), e não
+# importado como constante, porque a fórmula do SDK lê a variável do escopo do
+# módulo a cada chamada — importar o valor congelaria o número no import.
 import dynamixel_sdk.port_handler as _dxl_port_handler
-_dxl_port_handler.LATENCY_TIMER = 4
+
+LATENCY_MS_BAIXA  = 4    # só com set_low_latency_mode ativo (latência real ~1 ms)
+LATENCY_MS_PADRAO = 16   # padrão do SDK; seguro em qualquer adaptador
+
+# Baudrates que o SDK aceita (port_handler.getCFlagBaud). Qualquer outro faz
+# setBaudRate() devolver False, o que o nó checa na partida para acusar erro
+# de configuração em vez de culpar o cabo.
+BAUDRATES_SUPORTADOS = (
+    9600, 19200, 38400, 57600, 115200, 230400, 460800, 500000, 576000,
+    921600, 1000000, 1152000, 2000000, 2500000, 3000000, 3500000, 4000000,
+)
 
 # =====================================================================
 # Tabela de controle do AX-12 (Protocolo 1.0)
@@ -201,10 +230,58 @@ class AX12HardwareInterface(Node):
         self.device = self.get_parameter('device').value
         self.baudrate = self.get_parameter('baudrate').value
         self.velocidade_padrao = self.get_parameter('velocidade_padrao').value
-        self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
-        self.pausa_pos_abertura = self.get_parameter('pausa_pos_abertura').value
         self.ligar_torque = self.get_parameter('ligar_torque').value
+
+        # --- VALIDAÇÃO DOS PARÂMETROS NUMÉRICOS ---
+        # Nenhum destes dá "erro de configuração" quando recebe valor bobo: dá
+        # traceback, 100% de CPU, ou — pior — silêncio com mensagem enganosa.
+        # Corrigimos para o padrão avisando, em vez de abortar: é um nó de
+        # hardware, e subir com valor são é melhor que não subir.
+        self.pausa_pos_abertura = self.get_parameter('pausa_pos_abertura').value
+        if self.pausa_pos_abertura < 0:
+            self.get_logger().warn(
+                f'pausa_pos_abertura negativa ({self.pausa_pos_abertura}); usando 0.0. '
+                'time.sleep() nao aceita negativo e o ValueError derrubaria o no.')
+            self.pausa_pos_abertura = 0.0
+
+        self.intervalo_reconexao = self.get_parameter('intervalo_reconexao').value
+        if self.intervalo_reconexao <= 0:
+            self.get_logger().warn(
+                f'intervalo_reconexao invalido ({self.intervalo_reconexao}); usando 1.0 s. '
+                'Periodo zero e aceito pelo rclpy e faz o executor girar a 100% de CPU.')
+            self.intervalo_reconexao = 1.0
+
+        # Com 0 ou negativo, range(1, n+1) fica VAZIO: o laço de abertura não
+        # roda nenhuma vez e o nó morre dizendo "nao foi possivel abrir a
+        # porta" sem nunca ter tentado — uma mensagem que afirma algo falso.
+        self.tentativas_abertura = self.get_parameter('tentativas_abertura').value
+        if self.tentativas_abertura < 1:
+            self.get_logger().warn(
+                f'tentativas_abertura invalido ({self.tentativas_abertura}); usando 1. '
+                'Zero ou negativo faria o no desistir sem tentar abrir a porta.')
+            self.tentativas_abertura = 1
+
+        # Com 0 ou negativo, a PRIMEIRA falha de reconexão já satisfaz
+        # `falhas >= max` e desativa o nó em definitivo.
+        self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
+        if self.max_falhas_reconexao < 1:
+            self.get_logger().warn(
+                f'max_falhas_reconexao invalido ({self.max_falhas_reconexao}); usando 1. '
+                'Zero ou negativo desativaria o no na primeira falha de reconexao.')
+            self.max_falhas_reconexao = 1
+
+        # Baudrate: o SDK só aceita valores tabelados, e um fora da lista faz
+        # setBaudRate() devolver False — indistinguível, para quem lê o log, de
+        # cabo solto ou porta errada. Sem esta checagem, digitar um baudrate
+        # inválido produzia cinco "Falha ao abrir a porta" seguidos, culpando o
+        # hardware por um erro de digitação.
+        if self.baudrate not in BAUDRATES_SUPORTADOS:
+            raise RuntimeError(
+                f'baudrate {self.baudrate} nao e suportado pelo Dynamixel SDK. '
+                f'Valores aceitos: {", ".join(str(b) for b in BAUDRATES_SUPORTADOS)}.')
+
         self._avisou_observador = False   # o aviso de comando descartado sai uma vez só
+        self._avisou_baixa_latencia = False  # o aviso de latência sai uma vez por sessão
 
         # Mapa das juntas (nome ROS -> ID do motor no barramento).
         # Nomes seguem a convenção do URDF (adam.urdf): {lado}_{movimento}_{segmento}_{N}.
@@ -360,9 +437,7 @@ class AX12HardwareInterface(Node):
         #    (que retorna antes de chegar lá) e quando ninguém está publicando
         #    em /joint_trajectory. Nos dois, a porta caía e o nó ficava vivo
         #    porém mudo para sempre, sem nem chegar à mensagem de falha fatal.
-        self.create_timer(
-            self.get_parameter('intervalo_reconexao').value,
-            self._reconectar_callback)
+        self.create_timer(self.intervalo_reconexao, self._reconectar_callback)
 
     # =================================================================
     # FUNÇÕES DE APOIO (conexão, torque e avisos de erro)
@@ -384,8 +459,9 @@ class AX12HardwareInterface(Node):
            e `setupPort()` fecha a porta antes de reabrir. Encadear os dois
            fazia DOIS ciclos abre-fecha-abre seguidos num dispositivo CDC ACM,
            sem ganho nenhum. Uma chamada a setBaudRate já abre no baud certo.
-        2. Modo de baixa latência: sem ele o kernel segura os bytes recebidos
-           por até 16 ms (ver o patch de LATENCY_TIMER no topo do arquivo).
+        2. Modo de baixa latência: sem ele o kernel pode segurar os bytes
+           recebidos por até 16 ms. É AQUI que o orçamento de timeout do SDK é
+           escolhido, pelo resultado real do ioctl (ver LATENCY_MS_* no topo).
         3. Pausa antes do primeiro pacote: a OpenCR com firmware usb_to_dxl faz
            o barramento SEGUIR o baudrate do USB, mas só reconfigura a Serial3
            na iteração seguinte do loop() dela. Sem a pausa, os primeiros
@@ -397,13 +473,25 @@ class AX12HardwareInterface(Node):
                 self.port_ok = False
                 return False
 
+            # O orçamento de timeout ACOMPANHA o resultado real. Encurtá-lo sem
+            # a baixa latência faria respostas válidas expirarem (ver o bloco
+            # de LATENCY_MS_* no topo do arquivo).
             try:
                 self.portHandler.ser.set_low_latency_mode(True)
             except (OSError, ValueError, AttributeError):
                 # Nem todo driver/porta suporta; não é motivo para falhar aqui.
-                self.get_logger().warn(
-                    'Modo de baixa latencia indisponivel nesta porta: cada leitura '
-                    'falha custara mais e a telemetria fica lenta com o barramento ruim.')
+                # O aviso sai uma vez por sessão: numa porta que não suporta o
+                # ioctl, ele repetiria a cada reconexão sem nada de novo a dizer.
+                _dxl_port_handler.LATENCY_TIMER = LATENCY_MS_PADRAO
+                if not self._avisou_baixa_latencia:
+                    self._avisou_baixa_latencia = True
+                    self.get_logger().warn(
+                        'Modo de baixa latencia indisponivel nesta porta. Mantendo o '
+                        f'timeout padrao de {LATENCY_MS_PADRAO} ms por pacote: a telemetria '
+                        'fica lenta quando o barramento estiver ruim, mas resposta boa '
+                        'nao corre risco de expirar.')
+            else:
+                _dxl_port_handler.LATENCY_TIMER = LATENCY_MS_BAIXA
 
             time.sleep(self.pausa_pos_abertura)
             self.portHandler.ser.reset_input_buffer()
@@ -417,7 +505,7 @@ class AX12HardwareInterface(Node):
 
     def _abrir_porta_com_tentativas(self):
         """Tenta abrir a porta N vezes antes de desistir (N = parâmetro ROS)."""
-        tentativas = self.get_parameter('tentativas_abertura').value
+        tentativas = self.tentativas_abertura
         for tentativa in range(1, tentativas + 1):
             if self._abrir_porta():
                 self.get_logger().info(
@@ -542,7 +630,7 @@ class AX12HardwareInterface(Node):
         self.port_ok = False
         self._avisar_erro(
             f'PORTA SERIAL CAIU {contexto}! Reconexao automatica a cada '
-            f'{self.get_parameter("intervalo_reconexao").value:.0f} s.')
+            f'{self.intervalo_reconexao:g} s.')
 
     def _reconectar_callback(self):
         """Gatilho periódico da reconexão (timer). Silencioso se a porta está viva."""
