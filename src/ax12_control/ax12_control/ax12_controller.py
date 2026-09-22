@@ -17,6 +17,12 @@ mas não escreve nada no barramento — não liga o torque, não o desliga ao
 sair e descarta comandos. Serve para espelhar no RViz um robô movido à mão
 e para diagnosticar o barramento sem energizar os motores.
 
+A reconexão da porta é disparada por um timer próprio (`intervalo_reconexao`),
+independente de haver comandos chegando ou telemetria ligada. A abertura da
+porta liga o modo de baixa latência e espera `pausa_pos_abertura` antes do
+primeiro pacote — a OpenCR com firmware usb_to_dxl faz o barramento seguir o
+baudrate do USB e leva uma iteração do loop() dela para reconfigurar.
+
 Referência da tabela de controle:
 https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
 """
@@ -25,6 +31,7 @@ import math
 import time
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, qos_profile_sensor_data
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
@@ -34,6 +41,22 @@ from trajectory_msgs.msg import JointTrajectory
 
 # pyserial: usado apenas para reconhecer a exceção lançada quando a USB cai
 import serial
+
+# ERROS_SERIAL: tudo que significa "a porta morreu debaixo de nós".
+#
+# O detalhe que custa caro: termios.error NÃO herda de OSError (o MRO é
+# error -> Exception), então `except OSError` não o pega. E ele é justamente
+# o que sobe quando a USB é arrancada: o SDK chama port.clearPort() antes de
+# CADA pacote, que vira ser.flush() -> termios.tcdrain(fd) -> termios.error(5,
+# 'Input/output error'). Sem termios.error nesta tupla, arrancar o cabo não
+# virava reconexão — derrubava o nó inteiro com traceback.
+# serial.SerialException já é subclasse de OSError; fica na tupla por clareza.
+try:
+    import termios
+    _ERROS_TERMIOS = (termios.error,)
+except ImportError:            # termios é POSIX-only
+    _ERROS_TERMIOS = ()
+ERROS_SERIAL = (serial.SerialException, OSError) + _ERROS_TERMIOS
 
 # Importações explícitas (em vez de "import *") para sabermos o que vem do SDK
 from dynamixel_sdk import (
@@ -46,12 +69,27 @@ from dynamixel_sdk import (
     DXL_MAKEWORD,
 )
 
+# O SDK Python crava LATENCY_TIMER = 16 ms na fórmula de timeout de pacote
+# (port_handler.setPacketTimeout: tx + LATENCY_TIMER*2 + 2). Com esse valor,
+# CADA leitura que falha custa ~34 ms: 10 motores mudos gastam 341 ms e
+# estouram o período de 200 ms do timer de telemetria, saturando o executor
+# e atrasando os comandos. Baixar para 4 ms só é seguro porque _abrir_porta()
+# liga o modo de baixa latência da porta (latência real ~1 ms).
+# O patch é no módulo, e não no import, porque a fórmula lê a constante do
+# escopo do módulo a cada chamada.
+import dynamixel_sdk.port_handler as _dxl_port_handler
+_dxl_port_handler.LATENCY_TIMER = 4
+
 # =====================================================================
 # Tabela de controle do AX-12 (Protocolo 1.0)
 # =====================================================================
 PROTOCOL_VERSION        = 1.0
 ADDR_TORQUE_ENABLE      = 24   # 1 byte  (0 = desliga, 1 = liga)
 ADDR_GOAL_POSITION      = 30   # 2 bytes (0 a 1023 = 0° a 300°)
+# Não é lido por nome em lugar nenhum: o SyncWrite alcança este registrador
+# escrevendo 4 bytes a partir do 30 (ver LEN_GOAL_POS_E_SPEED logo abaixo).
+# Fica aqui porque o mapa da tabela de controle é a referência de quem for
+# estender o nó — apagá-lo economizaria uma linha e custaria a documentação.
 ADDR_MOVING_SPEED       = 32   # 2 bytes (0 a 1023; 0 = velocidade MÁXIMA!)
 
 # Goal Position (30) e Moving Speed (32) são vizinhos na tabela de controle.
@@ -89,9 +127,10 @@ for _cfg in MODELOS.values():
     _cfg['pos_por_rad'] = _cfg['max_pos'] / (2 * _cfg['limite_rad'])
 del _cfg
 
-# Compatibilidade com o restante do arquivo (default AX-12)
-POS_POR_RAD         = MODELOS['AX12']['pos_por_rad']
-UNIDADES_POR_RAD_S  = MODELOS['AX12']['unidades_por_rad_s']
+# Não replique valores de MODELOS em constantes soltas aqui. Existiam
+# POS_POR_RAD e UNIDADES_POR_RAD_S "por compatibilidade"; nada as lia (todo
+# o código usa modelo['...']) e elas só criavam a chance de divergir do
+# dicionário no dia em que um valor fosse ajustado num lugar só.
 
 # =====================================================================
 # OpenCR como dispositivo no barramento (firmware opencr_dxl_imu_bridge,
@@ -104,7 +143,16 @@ UNIDADES_POR_RAD_S  = MODELOS['AX12']['unidades_por_rad_s']
 OPENCR_ID             = 200
 ADDR_OPENCR_BLOCO     = 30
 LEN_OPENCR_BLOCO      = 20
-ADDR_OPENCR_DXL_POWER = 24   # RW: 0/1 liga-desliga o rail 12V dos motores
+# RW: 0/1 liga-desliga o rail de 12 V que alimenta os motores.
+# Ainda não escrevemos aqui, mas vale saber por que o registrador está mapeado:
+# o open_cr_module oficial do OP3 usa este rail como WATCHDOG — se os dados da
+# OpenCR ficam obsoletos por mais de 100 ms, ele reafirma dynamixel_power = 1,
+# ou seja, a própria ROBOTIS assume que esse rail cai em operação. Se um dia o
+# sintoma for "a porta abre e NENHUM motor responde" com a placa rodando o
+# firmware estilo OP3 (ID 200 vivo), escrever 1 aqui é o primeiro teste.
+# Com o firmware usb_to_dxl não adianta: lá o rail é ligado no setup() da placa
+# e o ID 200 não existe.
+ADDR_OPENCR_DXL_POWER = 24
 
 # Fatores de conversao — os MESMOS do open_cr_module oficial do OP3
 GYRO_GRAUS_S_POR_LSB = 2000.0 / 32800.0   # int16 cru -> graus/s
@@ -124,6 +172,15 @@ class AX12HardwareInterface(Node):
         self.declare_parameter('baudrate', 1000000)
         self.declare_parameter('tentativas_abertura', 5)    # tentativas ao iniciar o nó
         self.declare_parameter('max_falhas_reconexao', 10)  # desiste após N reconexões falhas
+        # Pausa entre abrir a porta e o primeiro pacote. A OpenCR com firmware
+        # usb_to_dxl só reconfigura a Serial3 para o baud do USB na iteração
+        # seguinte do loop() dela; sem esta margem o primeiro pacote sai no baud
+        # errado. Adaptadores "burros" (U2D2, FTDI) aceitam 0.0 sem problema.
+        self.declare_parameter('pausa_pos_abertura', 0.2)   # segundos
+        # Período do timer que tenta reerguer a porta caída. O orçamento de
+        # max_falhas_reconexao passa a ser contado em TEMPO (N tentativas a
+        # cada intervalo), e não por comando recebido como era antes.
+        self.declare_parameter('intervalo_reconexao', 1.0)  # segundos
         self.declare_parameter('velocidade_padrao', 100)    # usada se a msg vier sem velocities
         self.declare_parameter('taxa_leitura', 5.0)         # Hz da telemetria (0 desliga)
         # IMU do OpenCR (ID 200): exige o firmware opencr_dxl_imu_bridge
@@ -145,6 +202,7 @@ class AX12HardwareInterface(Node):
         self.baudrate = self.get_parameter('baudrate').value
         self.velocidade_padrao = self.get_parameter('velocidade_padrao').value
         self.max_falhas_reconexao = self.get_parameter('max_falhas_reconexao').value
+        self.pausa_pos_abertura = self.get_parameter('pausa_pos_abertura').value
         self.ligar_torque = self.get_parameter('ligar_torque').value
         self._avisou_observador = False   # o aviso de comando descartado sai uma vez só
 
@@ -236,7 +294,9 @@ class AX12HardwareInterface(Node):
         # Memória da leitura: último erro visto por motor (para alertar só
         # quando MUDA, e não 5x por segundo) e falhas de leitura seguidas
         self._ultimo_erro_lido = {}
-        self._falhas_leitura = {}
+        self._falhas_leitura = {}   # dxl_id -> nível do balde (ver ler_motores_callback)
+        self._avisou_leitura = set()  # dxl_ids que já geraram aviso de falha
+        self._clampado = {}        # junta -> estava clampada na última mensagem?
 
         # --- Objetos do Dynamixel SDK ---
         self.portHandler = PortHandler(self.device)
@@ -290,8 +350,19 @@ class AX12HardwareInterface(Node):
         if taxa_imu > 0:
             self.imu_publisher = self.create_publisher(
                 Imu, '/imu/data', qos_profile_sensor_data)
-            self._falhas_imu = 0
+            self._falhas_imu = 0      # nível do balde (ver ler_imu_callback)
+            self._avisou_imu = False  # já reclamamos do silêncio do ID 200?
             self.create_timer(1.0 / taxa_imu, self.ler_imu_callback)
+
+        # 6. Timer da reconexão — roda SEMPRE, e é o único gatilho dela.
+        #    Antes a reconexão só acontecia dentro do listener_callback, o que
+        #    a deixava inalcançável em dois casos reais: no modo observador
+        #    (que retorna antes de chegar lá) e quando ninguém está publicando
+        #    em /joint_trajectory. Nos dois, a porta caía e o nó ficava vivo
+        #    porém mudo para sempre, sem nem chegar à mensagem de falha fatal.
+        self.create_timer(
+            self.get_parameter('intervalo_reconexao').value,
+            self._reconectar_callback)
 
     # =================================================================
     # FUNÇÕES DE APOIO (conexão, torque e avisos de erro)
@@ -305,12 +376,41 @@ class AX12HardwareInterface(Node):
         self.error_publisher.publish(msg)
 
     def _abrir_porta(self):
-        """Uma única tentativa de abrir a porta. Retorna True se conseguiu."""
+        """Uma única tentativa de abrir a porta. Retorna True se conseguiu.
+
+        Três cuidados que o caminho ingênuo (openPort + setBaudRate) não tem:
+
+        1. `openPort()` do SDK É literalmente `setBaudRate(baudrate_guardado)`,
+           e `setupPort()` fecha a porta antes de reabrir. Encadear os dois
+           fazia DOIS ciclos abre-fecha-abre seguidos num dispositivo CDC ACM,
+           sem ganho nenhum. Uma chamada a setBaudRate já abre no baud certo.
+        2. Modo de baixa latência: sem ele o kernel segura os bytes recebidos
+           por até 16 ms (ver o patch de LATENCY_TIMER no topo do arquivo).
+        3. Pausa antes do primeiro pacote: a OpenCR com firmware usb_to_dxl faz
+           o barramento SEGUIR o baudrate do USB, mas só reconfigura a Serial3
+           na iteração seguinte do loop() dela. Sem a pausa, os primeiros
+           pacotes saem no baud errado e ninguém responde.
+        """
         try:
-            if self.portHandler.openPort() and self.portHandler.setBaudRate(self.baudrate):
-                self.port_ok = True
-                return True
-        except (serial.SerialException, OSError):
+            # setBaudRate() já abre a porta (setupPort) no baud pedido.
+            if not self.portHandler.setBaudRate(self.baudrate):
+                self.port_ok = False
+                return False
+
+            try:
+                self.portHandler.ser.set_low_latency_mode(True)
+            except (OSError, ValueError, AttributeError):
+                # Nem todo driver/porta suporta; não é motivo para falhar aqui.
+                self.get_logger().warn(
+                    'Modo de baixa latencia indisponivel nesta porta: cada leitura '
+                    'falha custara mais e a telemetria fica lenta com o barramento ruim.')
+
+            time.sleep(self.pausa_pos_abertura)
+            self.portHandler.ser.reset_input_buffer()
+
+            self.port_ok = True
+            return True
+        except ERROS_SERIAL:
             pass  # porta inexistente/ocupada: tratado como falha normal
         self.port_ok = False
         return False
@@ -340,7 +440,7 @@ class AX12HardwareInterface(Node):
             try:
                 result, error = self.packetHandler.write1ByteTxRx(
                     self.portHandler, dxl_id, ADDR_TORQUE_ENABLE, 1)
-            except (serial.SerialException, OSError):
+            except ERROS_SERIAL:
                 self._porta_caiu('ao ligar o torque')
                 return
             if result != COMM_SUCCESS:
@@ -361,14 +461,7 @@ class AX12HardwareInterface(Node):
             # VITAL: 50 ms para a fonte estabilizar antes de ligar o próximo
             time.sleep(0.05)
 
-        # --- Resumo final: tudo certo é info; motor faltando é erro publicado ---
-        total = len(self.joint_map)
-        if conectados == total:
-            self.get_logger().info(f'Todos os {total} motores conectados.')
-        else:
-            self._avisar_erro(
-                f'Apenas {conectados}/{total} motores responderam! '
-                'Verifique cabo, energia e IDs dos ausentes.')
+        self._resumo_presenca(conectados, 'conectados')
 
     def _verificar_presenca(self):
         """Modo observador: confere quem responde SEM escrever em registrador.
@@ -382,7 +475,7 @@ class AX12HardwareInterface(Node):
             try:
                 _, result, _ = self.packetHandler.read2ByteTxRx(
                     self.portHandler, dxl_id, ADDR_PRESENT_POSITION)
-            except (serial.SerialException, OSError):
+            except ERROS_SERIAL:
                 self._porta_caiu('ao verificar a presenca dos motores')
                 return
             if result != COMM_SUCCESS:
@@ -395,25 +488,73 @@ class AX12HardwareInterface(Node):
                     f'Motor ID {dxl_id} ({joint_name}): presente (torque intocado).')
             time.sleep(0.05)   # mesmo espaçamento do _ligar_torque
 
+        self._resumo_presenca(conectados, 'presentes')
+
+    def _resumo_presenca(self, conectados, adjetivo):
+        """Resume quem respondeu, separando falha de barramento de falha de motor.
+
+        A distinção importa porque o conselho é oposto: NENHUM motor
+        respondendo quase nunca é ID errado — é energia ou cabo, já que a
+        OpenCR enumera no USB e a porta abre normalmente mesmo sem os 12 V
+        chegarem aos motores. Antes as duas situações davam a mesma mensagem,
+        mandando conferir IDs justamente no caso em que o ID não é o problema.
+        """
         total = len(self.joint_map)
         if conectados == total:
-            self.get_logger().info(f'Todos os {total} motores presentes.')
+            self.get_logger().info(f'Todos os {total} motores {adjetivo}.')
+        elif conectados == 0:
+            self._avisar_erro(
+                f'NENHUM dos {total} motores respondeu. Isso quase nunca e ID errado: '
+                'a porta serial abriu, entao o adaptador esta vivo — o que falta e '
+                'energia ou cabo. Verifique (1) a fonte 12 V ligada no jack da placa, '
+                '(2) a chave de power da placa, (3) o cabo de 3 pinos ate o primeiro '
+                'motor e a corrente de cabos entre eles. A OpenCR enumera no USB '
+                'mesmo sem os 12 V chegarem aos motores.')
         else:
             self._avisar_erro(
-                f'Apenas {conectados}/{total} motores responderam! '
-                'Verifique cabo, energia e IDs dos ausentes.')
+                f'Apenas {conectados}/{total} motores responderam. Como parte do '
+                'barramento respondeu, suspeite dos ausentes em si: ID regravado, '
+                'cabo solto a partir de um ponto da corrente, ou motor queimado.')
+
+    def _avisar_clamp(self, joint_name, cmd_rad, rads, low, high):
+        """Avisa sobre o clamp SÓ na transição (entrou/saiu do limite).
+
+        Era o único aviso do arquivo sem memória de estado, ao lado do
+        _ultimo_erro_lido e do contador de ciclos da leitura. Uma junta
+        parada fora do limite publicava um aviso por mensagem recebida E
+        por junta — inundando /hardware_errors na cadência de quem estivesse
+        comandando, justamente quando o tópico precisa estar legível.
+        """
+        fora = abs(rads - cmd_rad) > 1e-4
+        if fora == self._clampado.get(joint_name, False):
+            return
+        self._clampado[joint_name] = fora
+        if fora:
+            self._avisar_erro(
+                f'{joint_name}: {cmd_rad:.3f} rad fora do limite '
+                f'[{low:.3f}, {high:.3f}] — clampado para {rads:.3f} rad.')
+        else:
+            self.get_logger().info(
+                f'{joint_name}: comando voltou para dentro do limite.')
 
     def _porta_caiu(self, contexto):
         """Marca a porta como caída e avisa. A reconexão acontece no callback."""
         self.port_ok = False
         self._avisar_erro(
-            f'PORTA SERIAL CAIU {contexto}! Tentando reconectar a cada comando recebido...')
+            f'PORTA SERIAL CAIU {contexto}! Reconexao automatica a cada '
+            f'{self.get_parameter("intervalo_reconexao").value:.0f} s.')
+
+    def _reconectar_callback(self):
+        """Gatilho periódico da reconexão (timer). Silencioso se a porta está viva."""
+        if self.desativado or self.port_ok:
+            return
+        self._tentar_reconectar()
 
     def _tentar_reconectar(self):
         """Tenta reerguer a conexão. Após max_falhas_reconexao, desiste de vez."""
         try:
             self.portHandler.closePort()
-        except (serial.SerialException, OSError):
+        except ERROS_SERIAL:
             pass  # a porta já estava morta; só queríamos liberar o descritor
 
         if self._abrir_porta():
@@ -456,11 +597,10 @@ class AX12HardwareInterface(Node):
                     'parametro para mover os motores.')
             return
 
-        # Porta caída: usa a chegada de cada comando como gatilho de reconexão
+        # Porta caída: só descarta. Quem reergue a conexão é o timer
+        # (_reconectar_callback), que roda mesmo sem comando chegando.
         if not self.port_ok:
-            self._tentar_reconectar()
-            if not self.port_ok:
-                return
+            return
 
         # Trajetória vazia não comanda nada
         if not msg.points:
@@ -483,6 +623,7 @@ class AX12HardwareInterface(Node):
         tem_velocidades = len(point.velocities) >= len(msg.joint_names)
 
         self.groupSyncWrite.clearParam()
+        juntas_no_pacote = 0
 
         for i, joint_name in enumerate(msg.joint_names):
             # Junta que este controlador não conhece: ignora
@@ -491,15 +632,24 @@ class AX12HardwareInterface(Node):
             dxl_id = self.joint_map[joint_name]
             modelo = MODELOS['AX12']   # todas as juntas são AX-12
 
+            cmd_rad = point.positions[i]
+
+            # NaN/inf NUNCA podem chegar ao motor. O clamp abaixo é feito por
+            # comparação, e toda comparação com NaN é falsa: min(high, nan)
+            # devolve high, então um NaN viraria silenciosamente o LIMITE
+            # SUPERIOR da junta — e o aviso de clamp também não dispararia,
+            # porque abs(high - nan) > 1e-4 é falso. Ou seja, uma IK que
+            # divergisse mandaria a junta ao batente sem deixar rastro.
+            if not math.isfinite(cmd_rad):
+                self._avisar_erro(
+                    f'{joint_name}: posicao invalida ({cmd_rad}) — junta ignorada.')
+                continue
+
             # --- CLAMP POR JUNTA (limites mecânicos do URDF) ---
             low, high = self.joint_limits.get(
                 joint_name, (-modelo['limite_rad'], modelo['limite_rad']))
-            cmd_rad = point.positions[i]
             rads = max(low, min(high, cmd_rad))
-            if abs(rads - cmd_rad) > 1e-4:
-                self._avisar_erro(
-                    f'{joint_name}: {cmd_rad:.3f} rad fora do limite '
-                    f'[{low:.3f}, {high:.3f}] — clampado para {rads:.3f} rad.')
+            self._avisar_clamp(joint_name, cmd_rad, rads, low, high)
 
             # Motor com eixo invertido: passa da convenção do URDF para a do
             # motor trocando o sinal (o clamp acima já usou os limites do URDF).
@@ -511,7 +661,9 @@ class AX12HardwareInterface(Node):
 
             # --- CONVERSÃO DE VELOCIDADE (rad/s -> 1 a 1023) ---
             # Mínimo 1, porque 0 significa "velocidade máxima" no motor!
-            if tem_velocidades:
+            # O isfinite vale aqui também: um NaN em velocities viraria
+            # ValueError no round(), derrubando o callback inteiro.
+            if tem_velocidades and math.isfinite(point.velocities[i]):
                 velocidade = round(abs(point.velocities[i]) * modelo['unidades_por_rad_s'])
             else:
                 velocidade = self.velocidade_padrao
@@ -520,13 +672,23 @@ class AX12HardwareInterface(Node):
             # --- EMPACOTA posição (2 bytes) + velocidade (2 bytes) juntas ---
             param = [DXL_LOBYTE(goal_pos), DXL_HIBYTE(goal_pos),
                      DXL_LOBYTE(velocidade), DXL_HIBYTE(velocidade)]
-            if not self.groupSyncWrite.addParam(dxl_id, param):
+            if self.groupSyncWrite.addParam(dxl_id, param):
+                juntas_no_pacote += 1
+            else:
                 self._avisar_erro(f'addParam falhou para o motor ID {dxl_id} (ID repetido?).')
+
+        # Nenhuma junta reconhecida nesta mensagem: não há o que enviar.
+        # Sem esta saída, o txPacket() de um pacote vazio devolve
+        # COMM_NOT_AVAILABLE, cuja string é "Protocol does not support this
+        # function!" — publicada em /hardware_errors como se fosse falha de
+        # hardware, quando na verdade a mensagem só não era para este nó.
+        if juntas_no_pacote == 0:
+            return
 
         # --- ENVIA TUDO num único pacote broadcast ---
         try:
             result = self.groupSyncWrite.txPacket()
-        except (serial.SerialException, OSError):
+        except ERROS_SERIAL:
             self._porta_caiu('durante o envio de comando')
             return
 
@@ -559,20 +721,33 @@ class AX12HardwareInterface(Node):
                 dados, result, error = self.packetHandler.readTxRx(
                     self.portHandler, dxl_id,
                     ADDR_PRESENT_POSITION, LEN_BLOCO_TELEMETRIA)
-            except (serial.SerialException, OSError):
+            except ERROS_SERIAL:
                 self._porta_caiu('durante a leitura de telemetria')
                 return
 
+            # --- BALDE FURADO por motor: falha enche 1, sucesso escoa 1 ---
+            # O contador antigo ZERAVA a cada sucesso e avisava em "== 25"
+            # exato. Isso deixava passar justamente o defeito mais comum, o
+            # cabo mal crimpado: um motor que falha 24 vezes, responde uma e
+            # volta a falhar nunca chegava a 25, então nunca avisava. E um
+            # motor morto de vez avisava UMA única vez, para sempre.
+            # Com o balde, 24 falhas + 1 acerto param em 23 e a rajada
+            # seguinte cruza o limiar; motor saudável fica no piso zero.
             if result != COMM_SUCCESS:
-                # Motor mudo nesta leitura: avisa só se virar rotina (~5 s)
-                falhas = self._falhas_leitura.get(dxl_id, 0) + 1
-                self._falhas_leitura[dxl_id] = falhas
-                if falhas == 25:
+                nivel = self._falhas_leitura.get(dxl_id, 0) + 1
+                self._falhas_leitura[dxl_id] = nivel
+                if nivel % 25 == 0:
+                    self._avisou_leitura.add(dxl_id)
                     self._avisar_erro(
-                        f'Motor ID {dxl_id} ({joint_name}) sem responder '
-                        f'a leitura ha {falhas} ciclos seguidos.')
+                        f'Motor ID {dxl_id} ({joint_name}) falhando na leitura '
+                        f'(nivel {nivel}; sobe 1 por falha, desce 1 por acerto).')
                 continue
-            self._falhas_leitura[dxl_id] = 0
+            nivel = max(0, self._falhas_leitura.get(dxl_id, 0) - 1)
+            self._falhas_leitura[dxl_id] = nivel
+            if nivel == 0 and dxl_id in self._avisou_leitura:
+                self._avisou_leitura.discard(dxl_id)
+                self.get_logger().info(
+                    f'Motor ID {dxl_id} ({joint_name}) voltou a responder de forma estavel.')
             modelo = MODELOS['AX12']   # todas as juntas são AX-12
 
             # --- Conversões (inverso das fórmulas de escrita) ---
@@ -668,21 +843,29 @@ class AX12HardwareInterface(Node):
             dados, result, error = self.packetHandler.readTxRx(
                 self.portHandler, OPENCR_ID,
                 ADDR_OPENCR_BLOCO, LEN_OPENCR_BLOCO)
-        except (serial.SerialException, OSError):
+        except ERROS_SERIAL:
             self._porta_caiu('durante a leitura do IMU')
             return
 
         if result != COMM_SUCCESS:
             # OpenCR mudo no ID 200: firmware antigo (usb_to_dxl) ou falha.
             # Avisa so quando virar rotina, como na telemetria dos motores.
+            # Mesmo balde furado da telemetria dos motores (ver lá o porquê).
             self._falhas_imu += 1
-            if self._falhas_imu == 25:
+            if self._falhas_imu % 25 == 0:
+                self._avisou_imu = True
                 self._avisar_erro(
                     'OpenCR (ID 200) sem responder a leitura do IMU ha '
-                    f'{self._falhas_imu} ciclos. O firmware '
-                    'opencr_dxl_imu_bridge esta gravado na placa?')
+                    f'{self._falhas_imu} ciclos. Com o firmware usb_to_dxl '
+                    '(ponte USB-serial pura) o ID 200 NUNCA responde, por '
+                    'construcao: so o firmware opencr_dxl_imu_bridge expoe '
+                    'a tabela de controle com o IMU. Use taxa_imu:=0.0 se '
+                    'a placa nao tiver esse firmware.')
             return
-        self._falhas_imu = 0
+        self._falhas_imu = max(0, self._falhas_imu - 1)
+        if self._falhas_imu == 0 and self._avisou_imu:
+            self._avisou_imu = False
+            self.get_logger().info('OpenCR (ID 200) voltou a responder ao IMU.')
 
         # Bloco 30..49: button(1) volt(1) gyro(6) acc(6) rpy(6)
         gyro = [self._int16(dados[2 + 2 * i], dados[3 + 2 * i]) for i in range(3)]
@@ -727,7 +910,7 @@ class AX12HardwareInterface(Node):
             if self.port_ok:
                 try:
                     self.portHandler.closePort()
-                except (serial.SerialException, OSError):
+                except ERROS_SERIAL:
                     pass
             super().destroy_node()
             return
@@ -740,7 +923,7 @@ class AX12HardwareInterface(Node):
                     self.packetHandler.write1ByteTxRx(
                         self.portHandler, dxl_id, ADDR_TORQUE_ENABLE, 0)
                 self.portHandler.closePort()
-            except (serial.SerialException, OSError):
+            except ERROS_SERIAL:
                 self.get_logger().warn('Porta indisponivel no encerramento; torque nao desligado.')
         super().destroy_node()
 
@@ -757,10 +940,17 @@ def main(args=None):
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
-        pass
+        pass            # Ctrl+C
+    except ExternalShutdownException:
+        pass            # SIGTERM: como systemd, docker e o ros2 launch encerram
     finally:
+        # destroy_node() é quem desliga o torque, então precisa rodar em
+        # qualquer caminho de saída. Já o shutdown() pode ter acontecido
+        # sozinho (é o que levanta ExternalShutdownException) — chamá-lo de
+        # novo lançava RCLError e enterrava o traceback do encerramento.
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':
