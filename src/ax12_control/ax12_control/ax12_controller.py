@@ -200,7 +200,14 @@ class AX12HardwareInterface(Node):
         self.declare_parameter('device', '/dev/ttyACM0')
         self.declare_parameter('baudrate', 1000000)
         self.declare_parameter('tentativas_abertura', 5)    # tentativas ao iniciar o nó
-        self.declare_parameter('max_falhas_reconexao', 10)  # desiste após N reconexões falhas
+        # Desiste após N reconexões falhas. O orçamento real é
+        # N x intervalo_reconexao, então 300 x 1 s = 5 minutos.
+        # Já foi 10 (= 10 segundos), e o teste com hardware mostrou que é curto
+        # demais: arrancado o cabo USB, o nó declarou FALHA FATAL em 8,6 s e a
+        # porta só reapareceu aos 43 s — quando ele já estava em `desativado`,
+        # de onde não sai mais. Religar leva tempo de gente: no WSL exige rodar
+        # `usbipd attach` à mão, e numa Raspberry Pi a USB demora a re-enumerar.
+        self.declare_parameter('max_falhas_reconexao', 300)
         # Pausa entre abrir a porta e o primeiro pacote. A OpenCR com firmware
         # usb_to_dxl só reconfigura a Serial3 para o baud do USB na iteração
         # seguinte do loop() dela; sem esta margem o primeiro pacote sai no baud
@@ -446,6 +453,8 @@ class AX12HardwareInterface(Node):
     def _avisar_erro(self, texto):
         """Mostra o aviso no terminal E publica em /hardware_errors."""
         self.get_logger().warn(texto)
+        if not rclpy.ok():
+            return      # encerrando: publicar aqui levantaria RCLError
         msg = String()
         msg.data = texto
         self.error_publisher.publish(msg)
@@ -859,10 +868,22 @@ class AX12HardwareInterface(Node):
                 pos_rad = -pos_rad
                 vel_rad_s = -vel_rad_s
 
-            carga_pct = (carga_raw & 0x3FF) / 10.23   # % do torque máximo
-            if carga_raw >= 1024:
-                carga_pct = -carga_pct
-            torque_nm = carga_pct / 100.0 * modelo['torque_max_nm']  # estimativa!
+            # --- CARGA: só tem significado com o torque LIGADO ---
+            # Medido no hardware: com o torque desligado e o motor parado e
+            # livre, o Present Load lê 864 CONSTANTE (84,5%) nas 200 leituras
+            # de um teste — não é ruído nem carga, é lixo estável que o
+            # registrador guarda. Publicar isso como N·m seria inventar
+            # medição: o /joint_states anunciaria 1,27 N·m num motor solto, e
+            # o /diagnostics ficaria em WARN eterno por "perto do limite de
+            # torque" (o limiar é 80%).
+            # A convenção do ROS para campo indisponível é NaN, não um número.
+            if self.ligar_torque:
+                carga_pct = (carga_raw & 0x3FF) / 10.23   # % do torque máximo
+                if carga_raw >= 1024:
+                    carga_pct = -carga_pct
+                torque_nm = carga_pct / 100.0 * modelo['torque_max_nm']  # estimativa!
+            else:
+                carga_pct = torque_nm = float('nan')
 
             # --- Monta o /joint_states (padrão ROS: rad, rad/s, N·m) ---
             js.name.append(joint_name)
@@ -886,25 +907,39 @@ class AX12HardwareInterface(Node):
             status = DiagnosticStatus()
             status.name = f'ax12/{joint_name}'
             status.hardware_id = str(dxl_id)
+            # math.isnan no lugar de `>= 80.0` direto: com o torque desligado
+            # carga_pct é NaN, toda comparação com NaN é falsa, e o nível cairia
+            # em OK por acidente. Melhor dizer explicitamente que só a
+            # temperatura é avaliável nesse caso.
+            carga_valida = not math.isnan(carga_pct)
             if error != 0:
                 status.level = DiagnosticStatus.ERROR
                 status.message = self.packetHandler.getRxPacketError(error)
-            elif temperatura >= 65.0 or abs(carga_pct) >= 80.0:
+            elif temperatura >= 65.0:
                 status.level = DiagnosticStatus.WARN
-                status.message = 'Perto do limite (temperatura ou torque)'
+                status.message = 'Temperatura perto do limite'
+            elif carga_valida and abs(carga_pct) >= 80.0:
+                status.level = DiagnosticStatus.WARN
+                status.message = 'Torque perto do limite'
             else:
                 status.level = DiagnosticStatus.OK
-                status.message = 'OK'
+                status.message = 'OK' if carga_valida else 'OK (torque desligado: carga nao medida)'
             status.values = [
                 KeyValue(key='angulo_graus', value=f'{math.degrees(pos_rad):.1f}'),
-                KeyValue(key='torque_pct', value=f'{carga_pct:.1f}'),
-                KeyValue(key='torque_nm_estimado', value=f'{torque_nm:.2f}'),
+                KeyValue(key='torque_pct',
+                         value=f'{carga_pct:.1f}' if carga_valida else 'n/d'),
+                KeyValue(key='torque_nm_estimado',
+                         value=f'{torque_nm:.2f}' if carga_valida else 'n/d'),
                 KeyValue(key='tensao_v', value=f'{tensao:.1f}'),
                 KeyValue(key='temperatura_c', value=f'{temperatura:.0f}'),
             ]
             diag.status.append(status)
 
-        if js.name:
+        # rclpy.ok(): o SIGINT invalida o contexto do rclpy ANTES de o executor
+        # terminar o callback em curso. Sem esta guarda, o publish levantava
+        # RCLError('publisher's context is invalid'), que escapava do main e
+        # virava traceback com codigo de saida 1 a cada Ctrl+C.
+        if js.name and rclpy.ok():
             self.joint_state_publisher.publish(js)
             self.diagnostics_publisher.publish(diag)
 
@@ -985,7 +1020,8 @@ class AX12HardwareInterface(Node):
         # -1 no primeiro elemento e a convencao ROS para "nao disponivel"
         # apenas na orientation se nao houvesse estimativa; aqui ha RPY do
         # filtro do firmware, entao deixamos 0 (desconhecida, mas valida).
-        self.imu_publisher.publish(msg)
+        if rclpy.ok():     # mesma guarda de encerramento da telemetria
+            self.imu_publisher.publish(msg)
 
     # =================================================================
     # ENCERRAMENTO SEGURO
@@ -1031,6 +1067,18 @@ def main(args=None):
         pass            # Ctrl+C
     except ExternalShutdownException:
         pass            # SIGTERM: como systemd, docker e o ros2 launch encerram
+    except Exception:
+        # Rede de segurança para a corrida de encerramento: o SIGINT invalida
+        # o contexto do rclpy enquanto um callback ainda está no meio de um
+        # publish, e o RCLError resultante escapava daqui virando traceback
+        # com código de saída 1. As guardas `rclpy.ok()` nos publishes fecham
+        # quase toda a janela, mas ela é inerentemente uma corrida.
+        # O teste é preciso: contexto morto = encerrando, engole; contexto
+        # vivo = erro de verdade, repassa. (RCLError só existe no módulo
+        # privado _rclpy_pybind11, então não dá para capturá-lo pelo tipo
+        # sem depender de API interna.)
+        if rclpy.ok():
+            raise
     finally:
         # destroy_node() é quem desliga o torque, então precisa rodar em
         # qualquer caminho de saída. Já o shutdown() pode ter acontecido

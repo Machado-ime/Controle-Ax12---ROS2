@@ -36,6 +36,7 @@ setup(
     entry_points={
         'console_scripts': [
             'ax12_controller = ax12_control.ax12_controller:main',
+            'scan_bus = ax12_control.scan_bus:main',
             'send_gait = ax12_control.send_gait:main',
             'marcha_continua = ax12_control.marcha_continua:main',
             'ax12_monitor = ax12_control.ax12_monitor:main',
