@@ -101,6 +101,22 @@ import dynamixel_sdk.port_handler as _dxl_port_handler
 LATENCY_MS_BAIXA  = 4    # só com set_low_latency_mode ativo (latência real ~1 ms)
 LATENCY_MS_PADRAO = 16   # padrão do SDK; seguro em qualquer adaptador
 
+# Balde furado da detecção de falha de leitura: cada falha soma 1, cada
+# sucesso subtrai DRENAGEM_POR_SUCESSO. O nível sobe enquanto
+#     p_falha > DRENAGEM / (1 + DRENAGEM)
+# então a drenagem escolhe a PERDA MÍNIMA DETECTÁVEL:
+#     1.00 -> só acusa acima de 50% de perda
+#     0.50 -> acima de 33%
+#     0.25 -> acima de 20%   <-- escolhido
+#     0.10 -> acima de 9%
+# Começou em 1.0, e o teste de bancada mostrou o buraco: mexendo no
+# conector de 3 pinos o barramento perdeu 3,3% num teste e 19 leituras
+# seguidas na pior rajada, e o nó não disse nada. Pior: com 1.0, um
+# barramento perdendo 30% dos pacotes — claramente defeituoso — ficaria
+# silencioso PARA SEMPRE, porque cada sucesso cancelava uma falha inteira.
+# 0.25 mantém ruído pontual sem alarme e acusa degradação real.
+DRENAGEM_POR_SUCESSO = 0.25
+
 # Baudrates que o SDK aceita (port_handler.getCFlagBaud). Qualquer outro faz
 # setBaudRate() devolver False, o que o nó checa na partida para acusar erro
 # de configuração em vez de culpar o cabo.
@@ -219,6 +235,11 @@ class AX12HardwareInterface(Node):
         self.declare_parameter('intervalo_reconexao', 1.0)  # segundos
         self.declare_parameter('velocidade_padrao', 100)    # usada se a msg vier sem velocities
         self.declare_parameter('taxa_leitura', 5.0)         # Hz da telemetria (0 desliga)
+        # Quanto tempo de silêncio ACUMULADO de um motor antes de avisar.
+        # Em segundos, e não em ciclos: o limiar era 25 ciclos fixos, cujo
+        # significado mudava com taxa_leitura (5 s a 5 Hz, 2,5 s a 10 Hz),
+        # deixando o log ambíguo para quem não soubesse a taxa configurada.
+        self.declare_parameter('segundos_falha_aviso', 5.0)
         # IMU do OpenCR (ID 200): exige o firmware opencr_dxl_imu_bridge
         # gravado na placa. 0 = desligado (padrao, seguro com o usb_to_dxl
         # antigo, que nao responde no ID 200).
@@ -424,8 +445,21 @@ class AX12HardwareInterface(Node):
             qos_profile
         )
 
+        # O limiar do balde é definido em SEGUNDOS e convertido para nível
+        # usando a taxa de cada leitor. Como uma falha soma exatamente 1, o
+        # nível equivale a "ciclos de silêncio total", e nível/taxa é o tempo
+        # de silêncio equivalente — o que torna a mensagem legível sem que o
+        # leitor precise saber a taxa configurada.
+        segundos_aviso = self.get_parameter('segundos_falha_aviso').value
+        if segundos_aviso <= 0:
+            self.get_logger().warn(
+                f'segundos_falha_aviso invalido ({segundos_aviso}); usando 5.0.')
+            segundos_aviso = 5.0
+
         # 4. Timer da telemetria (taxa_leitura = 0 desliga a leitura)
         taxa = self.get_parameter('taxa_leitura').value
+        self.taxa_leitura = taxa
+        self._limiar_leitura = max(1, round(segundos_aviso * taxa)) if taxa > 0 else 1
         if taxa > 0:
             self.create_timer(1.0 / taxa, self.ler_motores_callback)
 
@@ -434,8 +468,10 @@ class AX12HardwareInterface(Node):
         if taxa_imu > 0:
             self.imu_publisher = self.create_publisher(
                 Imu, '/imu/data', qos_profile_sensor_data)
-            self._falhas_imu = 0      # nível do balde (ver ler_imu_callback)
+            self._falhas_imu = 0.0    # nível do balde (ver ler_imu_callback)
             self._avisou_imu = False  # já reclamamos do silêncio do ID 200?
+            self.taxa_imu = taxa_imu
+            self._limiar_imu = max(1, round(segundos_aviso * taxa_imu))
             self.create_timer(1.0 / taxa_imu, self.ler_imu_callback)
 
         # 6. Timer da reconexão — roda SEMPRE, e é o único gatilho dela.
@@ -831,17 +867,24 @@ class AX12HardwareInterface(Node):
             # Com o balde, 24 falhas + 1 acerto param em 23 e a rajada
             # seguinte cruza o limiar; motor saudável fica no piso zero.
             if result != COMM_SUCCESS:
-                nivel = self._falhas_leitura.get(dxl_id, 0) + 1
+                nivel = self._falhas_leitura.get(dxl_id, 0.0) + 1.0
                 self._falhas_leitura[dxl_id] = nivel
-                if nivel % 25 == 0:
+                # Avisa ao cruzar o limiar e a cada múltiplo dele enquanto durar.
+                # Com o balde, o nível só sobe se a perda superar 20% — ruído
+                # pontual é drenado e não gera alarme.
+                anterior = nivel - 1.0
+                if int(nivel // self._limiar_leitura) > int(anterior // self._limiar_leitura):
                     self._avisou_leitura.add(dxl_id)
+                    segundos = nivel / self.taxa_leitura if self.taxa_leitura else 0.0
                     self._avisar_erro(
-                        f'Motor ID {dxl_id} ({joint_name}) falhando na leitura '
-                        f'(nivel {nivel}; sobe 1 por falha, desce 1 por acerto).')
+                        f'Motor ID {dxl_id} ({joint_name}) falhando na leitura: '
+                        f'{segundos:.1f} s de silencio acumulado '
+                        f'(nivel {nivel:.0f}; falha soma 1, acerto desconta '
+                        f'{DRENAGEM_POR_SUCESSO}).')
                 continue
-            nivel = max(0, self._falhas_leitura.get(dxl_id, 0) - 1)
+            nivel = max(0.0, self._falhas_leitura.get(dxl_id, 0.0) - DRENAGEM_POR_SUCESSO)
             self._falhas_leitura[dxl_id] = nivel
-            if nivel == 0 and dxl_id in self._avisou_leitura:
+            if nivel == 0.0 and dxl_id in self._avisou_leitura:
                 self._avisou_leitura.discard(dxl_id)
                 self.get_logger().info(
                     f'Motor ID {dxl_id} ({joint_name}) voltou a responder de forma estavel.')
@@ -974,19 +1017,20 @@ class AX12HardwareInterface(Node):
             # OpenCR mudo no ID 200: firmware antigo (usb_to_dxl) ou falha.
             # Avisa so quando virar rotina, como na telemetria dos motores.
             # Mesmo balde furado da telemetria dos motores (ver lá o porquê).
-            self._falhas_imu += 1
-            if self._falhas_imu % 25 == 0:
+            anterior = self._falhas_imu
+            self._falhas_imu += 1.0
+            if int(self._falhas_imu // self._limiar_imu) > int(anterior // self._limiar_imu):
                 self._avisou_imu = True
                 self._avisar_erro(
                     'OpenCR (ID 200) sem responder a leitura do IMU ha '
-                    f'{self._falhas_imu} ciclos. Com o firmware usb_to_dxl '
+                    f'{self._falhas_imu / self.taxa_imu:.1f} s. Com o firmware usb_to_dxl '
                     '(ponte USB-serial pura) o ID 200 NUNCA responde, por '
                     'construcao: so o firmware opencr_dxl_imu_bridge expoe '
                     'a tabela de controle com o IMU. Use taxa_imu:=0.0 se '
                     'a placa nao tiver esse firmware.')
             return
-        self._falhas_imu = max(0, self._falhas_imu - 1)
-        if self._falhas_imu == 0 and self._avisou_imu:
+        self._falhas_imu = max(0.0, self._falhas_imu - DRENAGEM_POR_SUCESSO)
+        if self._falhas_imu == 0.0 and self._avisou_imu:
             self._avisou_imu = False
             self.get_logger().info('OpenCR (ID 200) voltou a responder ao IMU.')
 
