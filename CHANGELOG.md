@@ -6,6 +6,23 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Removido
+- `src/adam_bringup/` — o pacote inteiro (`package.xml`, `CMakeLists.txt`,
+  `config/ros2_controllers.yaml`, `launch/mock.launch.py`). Era o único pacote que subia o
+  `controller_manager`/`JointTrajectoryController` (o "Caso 2" do organograma, digital twin
+  via `ros2_control` mock). Confirmado antes de apagar: nenhum outro `package.xml` do
+  workspace declarava `<depend>` dele — só um comentário de docstring em `gait_bridge.py`
+  citava o comando de launch. `colcon build` segue limpo com os 2 pacotes restantes
+  (`ax12_control`, `adam_description`).
+  - `gait_bridge.py` fica **órfão**: continua publicando em
+    `/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`
+    normalmente, só que agora sem nenhum `JointTrajectoryController` assinando — publica no
+    vazio, sem erro. O nó não foi removido (não foi pedido), só a documentação (`README.md`,
+    `src/README.md`, `docs/arquitetura.md`, `AGENTS.md`) foi atualizada para marcar isso.
+  - Caminho que continua 100% funcional: hardware real via `ax12_controller`, e o digital
+    twin sem `ros2_control` via `visualizar_marcha` — nenhum dos dois nunca dependeu de
+    `adam_bringup`.
+
 ### Alterado
 - Reorganização dos pacotes seguindo a convenção do ecossistema ROS 2. O workspace volta a
   ter 3 pacotes:

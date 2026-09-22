@@ -23,7 +23,7 @@ O sistema é distribuído entre duas máquinas ligadas pela rede:
 - **Raspberry Pi** — conectada aos motores via USB, roda o `ax12_controller` (único processo que acessa o barramento serial).
 - **PC de comando** — roda o `send_gait`, que lê a marcha de um arquivo `.yaml` e publica os passos via DDS/Wi-Fi.
 
-Estado atual: **10 motores ativos** nas pernas (pitch e roll de tornozelo, pitch de joelho, pitch e roll de quadril). Marchas configuráveis por arquivo YAML sem recompilar o código — o repositório não traz nenhuma pronta no momento; veja "Criar uma marcha nova" em [docs/arquitetura.md](docs/arquitetura.md#criar-uma-marcha-nova). Também é possível visualizar a marcha no RViz sem hardware nenhum (digital twin) — veja [docs/install.md](docs/install.md).
+Estado atual: **10 motores ativos** nas pernas (pitch e roll de tornozelo, pitch de joelho, pitch e roll de quadril), IDs no barramento iguais ao sufixo do nome da junta no URDF. Marchas configuráveis por arquivo YAML sem recompilar o código — `matriz_ciclo` é a única pronta no repositório; veja "Criar uma marcha nova" em [docs/arquitetura.md](docs/arquitetura.md#criar-uma-marcha-nova) para escrever a sua. Também é possível visualizar a marcha no RViz sem hardware nenhum (digital twin) — veja [docs/install.md](docs/install.md).
 
 ## Pré-requisitos
 
@@ -71,10 +71,9 @@ Controle-Ax12---ROS2/
 │   │   │   ├── marcha_continua.py   # ciclo contínuo da marcha no robô real
 │   │   │   ├── medir_roll.py        # janela Qt: 1 slider -> as 4 juntas de roll
 │   │   │   ├── controle_pe.py       # janela Qt: IK cartesiana do pé (roll + X/Z por perna)
-│   │   │   ├── gait_bridge.py       # ponte send_gait -> ros2_control (Caso 2)
+│   │   │   ├── gait_bridge.py       # ponte send_gait -> ros2_control (órfã: adam_bringup foi removido)
 │   │   │   └── adam.rviz            # config RViz pré-configurado para o Adam
-│   ├── adam_description/        # pacote ROS (ament_cmake): URDF, meshes e launch do modelo
-│   └── adam_bringup/            # pacote ROS (ament_cmake): ros2_control + mock.launch.py
+│   └── adam_description/        # pacote ROS (ament_cmake): URDF, meshes e launch do modelo
 └── docs/
     ├── install.md           # tutorial: instalação + primeira execução
     ├── troubleshooting.md   # guia: problemas conhecidos e soluções
@@ -101,7 +100,7 @@ Controle-Ax12---ROS2/
 | `marcha_continua` | Raspberry Pi | Roda uma marcha em ciclo contínuo no robô real (vai à coluna 1, espera o play, repete o ciclo) |
 | `medir_roll` | Raspberry Pi | 1 slider comanda as 4 juntas de roll juntas — mede o ângulo necessário para transferir o peso entre as pernas |
 | `controle_pe` | Raspberry Pi | IK cartesiana do pé: roll central + X/Z de cada pé por slider, pé sempre paralelo ao chão; exporta coluna pronta para YAML |
-| `gait_bridge` | PC de comando | Ponte para `ros2_control` (pacote `adam_bringup`, em `src/`) |
+| `gait_bridge` | PC de comando | Ponte para `ros2_control` — **órfã**: o pacote `adam_bringup` (que subia o `controller_manager`) foi removido, então hoje publica sem ninguém escutando |
 
 | Tópico | Tipo | QoS |
 |---|---|---|
@@ -128,7 +127,7 @@ Lista completa de referências (hardware, ros2_control, projetos de robôs bípe
 - [docs/arquitetura.md](docs/arquitetura.md) — como o sistema funciona por dentro
 - [docs/adr.md](docs/adr.md) — diário de bordo (decisões, testes, aprendizados)
 - [docs/ref/](docs/ref/) — referências externas e cola de comandos ROS 2
-- [src/README.md](src/README.md) — organograma e comandos dos 3 pacotes ROS
+- [src/README.md](src/README.md) — organograma e comandos dos 2 pacotes ROS
 - [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) — como contribuir
 - [AGENTS.md](AGENTS.md) — instruções para agentes de IA
 

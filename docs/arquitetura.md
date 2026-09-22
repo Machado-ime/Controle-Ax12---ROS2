@@ -206,11 +206,10 @@ matriz_movimento:         # 1 linha por junta (mesma ordem)
 
 ### Marchas disponíveis
 
-Nenhuma. O repositório não traz mais matrizes de marcha prontas — foram removidas. Os
-parâmetros `matriz` dos nós (`send_gait`, `visualizar_marcha`, `marcha_manual`,
-`marcha_continua`, `medir_roll`, `controle_pe`) continuam com valores padrão (`otimizada`,
-`cin_inve`, `cin_inve_2`, conforme o nó), mas esses arquivos não existem mais — rodar sem
-passar `-p matriz:=<nome>` com um `.yaml` seu falha com `FileNotFoundError`.
+Uma commitada: `matriz_ciclo.yaml` (8 etapas). É a única marcha "oficial" hoje — os
+parâmetros `matriz` dos nós que ainda apontam para nomes antigos (`otimizada`, `cin_inve`,
+`cin_inve_2`) falham com `FileNotFoundError` se você não passar `-p matriz:=<nome>`
+explicitamente.
 
 ### Selecionar a marcha
 
@@ -261,9 +260,9 @@ Une o seletor de coluna do `visualizar_marcha`/`passo_slider` com o envio ao har
 
 Publica só `/joint_trajectory` (mesmo tópico do `ax12_controller`); o RViz mostra a posição **real** via `/joint_states` do controlador — mesma decisão de design do `controle_manual` (sem duplicar publisher de `/joint_states`). Reaproveita `resolver_caminho_matriz`/`carregar_marcha` do `send_gait` para ler e validar a matriz, e calcula a velocidade de cada junta como `|Δ| / passo` (todas chegam juntas, como no `send_gait`). Como passa pelo `ax12_controller`, herda a correção de juntas invertidas.
 
-### `gait_bridge.py` — ponte para o `ros2_control` (Caso 2: mock)
+### `gait_bridge.py` — ponte para o `ros2_control` (órfã: pacote `adam_bringup` removido)
 
-Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s do pacote `adam_bringup` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). Sem o bridge os dois lados nunca se conectam, mesmo com os nomes de junta certos, porque o QoS é incompatível.
+Liga o `send_gait` (publica em `/joint_trajectory`, QoS BEST_EFFORT) aos `JointTrajectoryController`s de um pacote `ros2_control` (`/perna_direita_controller/joint_trajectory` e `/perna_esquerda_controller/joint_trajectory`, QoS RELIABLE — exigido pelo controller). O pacote que subia esses controllers, `adam_bringup`, foi removido do workspace: o nó continua rodando e publicando normalmente, só que hoje não há nenhum `JointTrajectoryController` assinando esses tópicos — publica no vazio, sem erro nenhum. Sem um pacote assim, o `gait_bridge` não tem função prática.
 
 ### `controle_manual.py` — jog manual com hardware real (`controle_manual.launch.py`)
 
