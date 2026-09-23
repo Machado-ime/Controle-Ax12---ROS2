@@ -7,6 +7,10 @@ arquivo: ver `git log`.
 ## [Não lançado]
 
 ### Removido
+- Leitura de IMU do `ax12_controller`: o tópico `/imu/data`, os parâmetros `taxa_imu` e
+  `imu_frame_id` e o acesso ao ID 200 da OpenCR. Não faz parte desta fase do projeto, e o
+  firmware `usb_to_dxl` gravado na placa nem responde no ID 200. Invalida a nota mais abaixo
+  sobre `/imu/data` continuar funcionando com o firmware `opencr_dxl_imu_bridge`.
 - `src/adam_bringup/` — o pacote inteiro (`package.xml`, `CMakeLists.txt`,
   `config/ros2_controllers.yaml`, `launch/mock.launch.py`). Era o único pacote que subia o
   `controller_manager`/`JointTrajectoryController` (o "Caso 2" do organograma, digital twin

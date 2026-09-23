@@ -215,12 +215,12 @@ def main(args=None):
             print(f'\n  OpenCR no ID {OPENCR_ID}: '
                   f'{"RESPONDE" if resp else "mudo"}')
             if resp:
-                print('    -> firmware estilo OP3: o IMU esta disponivel.')
-                print('       Pode usar o ax12_controller com -p taxa_imu:=50.0')
+                print('    -> firmware estilo OP3: a placa responde como dispositivo')
+                print('       do barramento, com tabela de controle propria.')
             else:
                 print('    -> firmware usb_to_dxl (ponte USB-serial pura), ou placa')
                 print('       ausente. O ID 200 NUNCA responde com esse firmware, por')
-                print('       construcao — mantenha taxa_imu:=0.0 (o padrao).')
+                print('       construcao — e o esperado nesta montagem.')
 
         try:
             port.closePort()

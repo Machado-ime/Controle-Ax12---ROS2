@@ -106,7 +106,6 @@ Controle-Ax12---ROS2/
 |---|---|---|
 | `/joint_trajectory` | `trajectory_msgs/JointTrajectory` | BEST_EFFORT / depth 1 |
 | `/joint_states` | `sensor_msgs/JointState` | BEST_EFFORT |
-| `/imu/data` | `sensor_msgs/Imu` | BEST_EFFORT — só com `taxa_imu` > 0 (lê o bloco de registro 200 da OpenCR) |
 | `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | RELIABLE |
 | `/hardware_errors` | `std_msgs/String` | RELIABLE |
 

@@ -5,6 +5,14 @@ Append-only: não reescreva relatos antigos; corrija com um relato novo e datado
 
 ---
 
+## 2026-09-23 — Claude (a pedido de Fernando) — Remove a leitura de IMU do ax12_controller
+`[decisão]`
+O IMU não será usado nesta fase do projeto. Saíram do `ax12_controller` o `/imu/data`, os
+parâmetros `taxa_imu`/`imu_frame_id` e o acesso ao ID 200 da OpenCR. Com o firmware
+`usb_to_dxl` gravado na placa, o ID 200 nunca responde (a placa é só ponte USB↔serial), então
+o código também não tinha como funcionar aqui. Uma nota no código explica que ID 200/IMU exigem
+o firmware estilo OP3, caso isso volte ao projeto.
+
 ## 2026-07-01 — Claude (a pedido de Fernando) — Corrige juntas de pitch com eixo invertido
 `[problema]`
 Testando o `controle_manual` com o robô real (motores ligados no PC via usbipd), o Fernando

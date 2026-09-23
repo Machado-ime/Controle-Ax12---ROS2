@@ -23,6 +23,9 @@ porta liga o modo de baixa latência e espera `pausa_pos_abertura` antes do
 primeiro pacote — a OpenCR com firmware usb_to_dxl faz o barramento seguir o
 baudrate do USB e leva uma iteração do loop() dela para reconfigurar.
 
+Este nó cuida APENAS dos motores. Não há leitura de IMU: a OpenCR aqui é só
+a ponte USB-serial, e o ID 200 (que traria o IMU) exige outro firmware.
+
 Referência da tabela de controle:
 https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
 """
@@ -35,7 +38,7 @@ from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, qos_profile_sensor_data
 from diagnostic_msgs.msg import DiagnosticArray, DiagnosticStatus, KeyValue
-from sensor_msgs.msg import Imu, JointState
+from sensor_msgs.msg import JointState
 from std_msgs.msg import String
 from trajectory_msgs.msg import JointTrajectory
 
@@ -177,33 +180,13 @@ del _cfg
 # o código usa modelo['...']) e elas só criavam a chance de divergir do
 # dicionário no dia em que um valor fosse ajustado num lugar só.
 
-# =====================================================================
-# OpenCR como dispositivo no barramento (firmware opencr_dxl_imu_bridge,
-# gravado separadamente na placa — nao faz parte deste repositorio) —
-# padrao do ROBOTIS OP3: o OpenCR responde no ID 200 com uma tabela de
-# controle propria contendo o IMU.
-# Bloco contiguo 30..49: button(1) + voltage(1) + gyro xyz(6) +
-# acc xyz(6) + roll/pitch/yaw(6) — lido numa UNICA transacao.
-# =====================================================================
-OPENCR_ID             = 200
-ADDR_OPENCR_BLOCO     = 30
-LEN_OPENCR_BLOCO      = 20
-# RW: 0/1 liga-desliga o rail de 12 V que alimenta os motores.
-# Ainda não escrevemos aqui, mas vale saber por que o registrador está mapeado:
-# o open_cr_module oficial do OP3 usa este rail como WATCHDOG — se os dados da
-# OpenCR ficam obsoletos por mais de 100 ms, ele reafirma dynamixel_power = 1,
-# ou seja, a própria ROBOTIS assume que esse rail cai em operação. Se um dia o
-# sintoma for "a porta abre e NENHUM motor responde" com a placa rodando o
-# firmware estilo OP3 (ID 200 vivo), escrever 1 aqui é o primeiro teste.
-# Com o firmware usb_to_dxl não adianta: lá o rail é ligado no setup() da placa
-# e o ID 200 não existe.
-ADDR_OPENCR_DXL_POWER = 24
-
-# Fatores de conversao — os MESMOS do open_cr_module oficial do OP3
-GYRO_GRAUS_S_POR_LSB = 2000.0 / 32800.0   # int16 cru -> graus/s
-ACC_G_POR_LSB        = 2.0 / 32768.0      # int16 cru -> g
-RPY_GRAUS_POR_LSB    = 0.1                # int16 -> graus (firmware manda deg*10)
-G_PARA_M_S2          = 9.80665
+# NOTA sobre o ID 200 (OpenCR): este nó NÃO fala com a placa como
+# dispositivo do barramento — ela é apenas a ponte USB-serial. O ID 200 só
+# existe com o firmware estilo OP3 (opencr_dxl_imu_bridge), que expõe uma
+# tabela de controle própria com IMU e com o rail de 12 V dos motores. Com o
+# firmware usb_to_dxl, que é o gravado nesta placa (confirmado lendo o ID 200
+# e não obtendo resposta), nada disso existe: ela só encaminha bytes.
+# A leitura de IMU foi removida por não fazer parte desta fase do projeto.
 
 
 class AX12HardwareInterface(Node):
@@ -240,11 +223,6 @@ class AX12HardwareInterface(Node):
         # significado mudava com taxa_leitura (5 s a 5 Hz, 2,5 s a 10 Hz),
         # deixando o log ambíguo para quem não soubesse a taxa configurada.
         self.declare_parameter('segundos_falha_aviso', 5.0)
-        # IMU do OpenCR (ID 200): exige o firmware opencr_dxl_imu_bridge
-        # gravado na placa. 0 = desligado (padrao, seguro com o usb_to_dxl
-        # antigo, que nao responde no ID 200).
-        self.declare_parameter('taxa_imu', 0.0)             # Hz da leitura do IMU
-        self.declare_parameter('imu_frame_id', 'imu_link')
         # MODO OBSERVADOR: com ligar_torque:=false o nó vira somente-leitura —
         # não liga o torque ao iniciar, não religa ao reconectar, não desliga
         # ao sair e DESCARTA comandos de /joint_trajectory. Serve para espelhar
@@ -463,18 +441,7 @@ class AX12HardwareInterface(Node):
         if taxa > 0:
             self.create_timer(1.0 / taxa, self.ler_motores_callback)
 
-        # 5. Timer do IMU do OpenCR (taxa_imu = 0 desliga; ver parametro)
-        taxa_imu = self.get_parameter('taxa_imu').value
-        if taxa_imu > 0:
-            self.imu_publisher = self.create_publisher(
-                Imu, '/imu/data', qos_profile_sensor_data)
-            self._falhas_imu = 0.0    # nível do balde (ver ler_imu_callback)
-            self._avisou_imu = False  # já reclamamos do silêncio do ID 200?
-            self.taxa_imu = taxa_imu
-            self._limiar_imu = max(1, round(segundos_aviso * taxa_imu))
-            self.create_timer(1.0 / taxa_imu, self.ler_imu_callback)
-
-        # 6. Timer da reconexão — roda SEMPRE, e é o único gatilho dela.
+        # 5. Timer da reconexão — roda SEMPRE, e é o único gatilho dela.
         #    Antes a reconexão só acontecia dentro do listener_callback, o que
         #    a deixava inalcançável em dois casos reais: no modo observador
         #    (que retorna antes de chegar lá) e quando ninguém está publicando
@@ -985,87 +952,6 @@ class AX12HardwareInterface(Node):
         if js.name and rclpy.ok():
             self.joint_state_publisher.publish(js)
             self.diagnostics_publisher.publish(diag)
-
-    # =================================================================
-    # LEITURA DO IMU (OpenCR no ID 200 — firmware opencr_dxl_imu_bridge)
-    # =================================================================
-
-    @staticmethod
-    def _int16(lo, hi):
-        """Junta 2 bytes little-endian num int16 COM sinal."""
-        v = lo | (hi << 8)
-        return v - 65536 if v >= 32768 else v
-
-    def ler_imu_callback(self):
-        """Le o bloco de IMU do OpenCR e publica sensor_msgs/Imu.
-
-        Roda no mesmo thread dos comandos e da telemetria (o rclpy executa
-        um callback de cada vez), entao nunca disputa a serial com eles.
-        """
-        if self.desativado or not self.port_ok:
-            return
-
-        try:
-            dados, result, error = self.packetHandler.readTxRx(
-                self.portHandler, OPENCR_ID,
-                ADDR_OPENCR_BLOCO, LEN_OPENCR_BLOCO)
-        except ERROS_SERIAL:
-            self._porta_caiu('durante a leitura do IMU')
-            return
-
-        if result != COMM_SUCCESS:
-            # OpenCR mudo no ID 200: firmware antigo (usb_to_dxl) ou falha.
-            # Avisa so quando virar rotina, como na telemetria dos motores.
-            # Mesmo balde furado da telemetria dos motores (ver lá o porquê).
-            anterior = self._falhas_imu
-            self._falhas_imu += 1.0
-            if int(self._falhas_imu // self._limiar_imu) > int(anterior // self._limiar_imu):
-                self._avisou_imu = True
-                self._avisar_erro(
-                    'OpenCR (ID 200) sem responder a leitura do IMU ha '
-                    f'{self._falhas_imu / self.taxa_imu:.1f} s. Com o firmware usb_to_dxl '
-                    '(ponte USB-serial pura) o ID 200 NUNCA responde, por '
-                    'construcao: so o firmware opencr_dxl_imu_bridge expoe '
-                    'a tabela de controle com o IMU. Use taxa_imu:=0.0 se '
-                    'a placa nao tiver esse firmware.')
-            return
-        self._falhas_imu = max(0.0, self._falhas_imu - DRENAGEM_POR_SUCESSO)
-        if self._falhas_imu == 0.0 and self._avisou_imu:
-            self._avisou_imu = False
-            self.get_logger().info('OpenCR (ID 200) voltou a responder ao IMU.')
-
-        # Bloco 30..49: button(1) volt(1) gyro(6) acc(6) rpy(6)
-        gyro = [self._int16(dados[2 + 2 * i], dados[3 + 2 * i]) for i in range(3)]
-        acc = [self._int16(dados[8 + 2 * i], dados[9 + 2 * i]) for i in range(3)]
-        rpy = [self._int16(dados[14 + 2 * i], dados[15 + 2 * i]) for i in range(3)]
-
-        # Conversoes (mesmos fatores do open_cr_module do OP3)
-        gyro_rad_s = [math.radians(v * GYRO_GRAUS_S_POR_LSB) for v in gyro]
-        acc_m_s2 = [v * ACC_G_POR_LSB * G_PARA_M_S2 for v in acc]
-        roll, pitch, yaw = (math.radians(v * RPY_GRAUS_POR_LSB) for v in rpy)
-
-        # Euler (ZYX) -> quaternion
-        cr, sr = math.cos(roll / 2), math.sin(roll / 2)
-        cp, sp = math.cos(pitch / 2), math.sin(pitch / 2)
-        cy, sy = math.cos(yaw / 2), math.sin(yaw / 2)
-
-        msg = Imu()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = self.get_parameter('imu_frame_id').value
-        msg.orientation.w = cr * cp * cy + sr * sp * sy
-        msg.orientation.x = sr * cp * cy - cr * sp * sy
-        msg.orientation.y = cr * sp * cy + sr * cp * sy
-        msg.orientation.z = cr * cp * sy - sr * sp * cy
-        (msg.angular_velocity.x, msg.angular_velocity.y,
-         msg.angular_velocity.z) = gyro_rad_s
-        (msg.linear_acceleration.x, msg.linear_acceleration.y,
-         msg.linear_acceleration.z) = acc_m_s2
-        # Covariancias desconhecidas (sensor sem especificacao formal):
-        # -1 no primeiro elemento e a convencao ROS para "nao disponivel"
-        # apenas na orientation se nao houvesse estimativa; aqui ha RPY do
-        # filtro do firmware, entao deixamos 0 (desconhecida, mas valida).
-        if rclpy.ok():     # mesma guarda de encerramento da telemetria
-            self.imu_publisher.publish(msg)
 
     # =================================================================
     # ENCERRAMENTO SEGURO
