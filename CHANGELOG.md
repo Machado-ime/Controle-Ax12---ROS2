@@ -6,6 +6,13 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Adicionado
+- `matriz_ciclo_trim.yaml` — `matriz_ciclo` com trim de pitch do quadril de −7° (o mesmo
+  offset do slider "Trim quadril (pitch)" do `controle_pe`), para alinhar o tronco.
+- `matriz_ciclo_trim2.yaml` — `matriz_ciclo` com trim de −9° e abertura das pernas de 5°
+  (rolls de quadril com sinais opostos: `pd_roll_quadril_9` −, `pe_roll_quadril_10` +; rolls
+  de tornozelo com o inverso, para a sola continuar plana). Ver `docs/adr.md` (2026-09-23).
+
 ### Removido
 - Leitura de IMU do `ax12_controller`: o tópico `/imu/data`, os parâmetros `taxa_imu` e
   `imu_frame_id` e o acesso ao ID 200 da OpenCR. Não faz parte desta fase do projeto, e o

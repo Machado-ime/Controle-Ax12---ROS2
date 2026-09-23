@@ -5,6 +5,26 @@ Append-only: não reescreva relatos antigos; corrija com um relato novo e datado
 
 ---
 
+## 2026-09-23 — Claude (a pedido de Fernando) — Matrizes com trim e abertura; sinal do trim testado
+`[teste]`
+Criadas duas variantes da `matriz_ciclo` com correções fixas somadas em todas as colunas:
+`matriz_ciclo_trim` (trim de pitch do quadril de −7°) e `matriz_ciclo_trim2` (trim de −9° +
+abertura das pernas de 5°). O trim é o mesmo do slider do `controle_pe` (`hip_pitch_offset`
+do OP3): `pd_picht_quadril_7 += trim`, `pe_pich_quadril_8 -= trim`, joelho e tornozelo
+intactos.
+
+**Teste no robô:** a primeira versão da `trim2` usou trim de **+9°** e inclinou o tronco para o
+lado errado; −7° e −9° são o sentido certo. A previsão feita pela FK do URDF ("+ inclina o
+tronco para trás") não bateu com o que se viu — vale o sentido observado no robô, não o
+previsto pelo modelo.
+
+**Abertura das pernas:** pela FK do URDF, abrir exige sinais **opostos** nos rolls de quadril
+(`pd_roll_quadril_9` negativo, `pe_roll_quadril_10` positivo; +5° ≈ +30 mm entre os pés). O
+mesmo sinal nos dois é o balanço lateral de transferir peso, que já está nas colunas. Cada
+roll de tornozelo recebe o inverso do quadril da mesma perna para a sola continuar plana
+(FK: pé inclina no máximo 0,2°). Limite prático: ~24° de abertura, porque ela empurra os
+rolls de tornozelo para o lado de curso curto (34°), onde a marcha já gasta 10°.
+
 ## 2026-09-23 — Claude (a pedido de Fernando) — Remove a leitura de IMU do ax12_controller
 `[decisão]`
 O IMU não será usado nesta fase do projeto. Saíram do `ax12_controller` o `/imu/data`, os
