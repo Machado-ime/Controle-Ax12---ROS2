@@ -35,8 +35,8 @@ ros2 run ax12_control scan_bus --device /dev/ttyUSB0
 |---|---|
 | `Modo de baixa latencia: ATIVO` | o `ax12_controller` vai usar orçamento de 4 ms/pacote |
 | `Modo de baixa latencia: INDISPONIVEL` | vai manter 16 ms/pacote — ciclo de telemetria 3x mais lento com barramento ruim |
-| `OpenCR no ID 200: RESPONDE` | firmware estilo OP3 — o IMU existe, pode usar `-p taxa_imu:=50.0` |
-| `OpenCR no ID 200: mudo` | firmware `usb_to_dxl` (ponte pura) — o ID 200 **nunca** responde, por construção |
+| `OpenCR no ID 200: RESPONDE` | firmware estilo OP3 — a placa responde como dispositivo do barramento |
+| `OpenCR no ID 200: mudo` | firmware `usb_to_dxl` (ponte pura) — o ID 200 **nunca** responde, por construção; é o esperado nesta montagem |
 | lista de IDs + modelo | quais motores existem de fato, e em qual baudrate |
 
 O script é **somente leitura** — só instruções READ, que não alteram

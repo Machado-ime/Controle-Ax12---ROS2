@@ -1,0 +1,62 @@
+# Matriz de marcha = matriz_ciclo.yaml + DUAS correcoes fixas (todas as colunas).
+# Angulos em RADIANOS, convencao do URDF (a inversao fisica dos motores
+# 3/4/7/8/9/10 e feita no ax12_controller, nao aqui).
+#
+# 1) TRIM DE PITCH DO QUADRIL = -9.0 graus (-0.157080 rad)
+#    Mesmo slider "Trim quadril (pitch)" do controle_pe (hip_pitch_offset do
+#    OP3): offset so nos pitchs de quadril, para alinhar o tronco que cede
+#    sob o proprio peso. Joelho e tornozelo intactos de proposito.
+#      pd_picht_quadril_7 += (+1) * trim = -0.1571 rad
+#      pe_pich_quadril_8  += (-1) * trim = +0.1571 rad
+#    NEGATIVO de proposito: mesmo sentido do -7 da matriz_ciclo_trim. Uma
+#    versao com +9 foi testada no robo e inclinou para o lado errado.
+#
+# 2) ABERTURA DAS PERNAS = 5.0 graus (0.087266 rad)
+#    Rolls de quadril com sinais OPOSTOS (mesmo sinal seria o balanco
+#    lateral de transferir peso, que ja esta nas colunas). Os rolls de
+#    tornozelo recebem o inverso do quadril da mesma perna, para a sola
+#    continuar plana. Pela FK do URDF: +30 mm entre os pes (103 -> 133 mm).
+#      pd_roll_quadril_9   += -0.0873    pd_roll_tornozelo_1 += +0.0873
+#      pe_roll_quadril_10  += +0.0873    pe_roll_tornozelo_2 += -0.0873
+#
+# Joelhos e pitchs de tornozelo: identicos a matriz_ciclo.
+# Colunas (etapas do ciclo):
+#   0: 1 PD frente, roll 0
+#   1: 2 PD frente, peso dir
+#   2: 3 PE no ar
+#   3: 4 PE frente, peso dir
+#   4: 5 PE frente, roll 0
+#   5: 6 PE frente, peso esq
+#   6: 7 PD no ar
+#   7: 8 PD frente, peso esq
+#
+# Rodar:
+#   ros2 launch ax12_control marcha_manual.launch.py matriz:=matriz_ciclo_trim2
+#   ros2 run ax12_control marcha_continua --ros-args -p matriz:=matriz_ciclo_trim2
+
+passo: 1.0      # segundos por transicao
+pausa: 0.5      # repouso extra apos cada transicao
+
+nomes_juntas:
+  - pd_roll_tornozelo_1    # ID 1
+  - pe_roll_tornozelo_2    # ID 2
+  - pd_picht_tornozelo_3    # ID 3
+  - pe_picht_tornozelo_4    # ID 4
+  - pd_picht_joelho_5    # ID 5
+  - pe_picht_joelho_6    # ID 6
+  - pd_picht_quadril_7    # ID 7
+  - pe_pich_quadril_8    # ID 8
+  - pd_roll_quadril_9    # ID 9
+  - pe_roll_quadril_10    # ID 10
+
+matriz_movimento:
+  - [ 0.0873, -0.0872, -0.0872, -0.0872,  0.0873,  0.2618,  0.2618,  0.2618]  # pd_roll_tornozelo_1   (+abertura (compensa))
+  - [-0.0873, -0.2618, -0.2618, -0.2618, -0.0873,  0.0872,  0.0872,  0.0872]  # pe_roll_tornozelo_2   (+abertura (compensa))
+  - [-0.3921, -0.3919, -0.5571, -0.7010, -0.7015, -0.6335, -0.7406, -0.3267]  # pd_picht_tornozelo_3
+  - [ 0.7088,  0.6398,  0.7500,  0.3365,  0.4022,  0.4019,  0.5661,  0.7088]  # pe_picht_tornozelo_4
+  - [ 1.3826,  1.3819,  1.4746,  1.5146,  1.5154,  1.3759,  1.9012,  1.2299]  # pd_picht_joelho_5
+  - [-1.5162, -1.3756, -1.9037, -1.2365, -1.3895, -1.3894, -1.4790, -1.5162]  # pe_picht_joelho_6
+  - [-1.1476, -1.1471, -1.0745, -0.9707, -0.9712, -0.8997, -1.3178, -1.0602]  # pd_picht_quadril_7   (+trim)
+  - [ 0.9645,  0.8928,  1.3110,  1.0572,  1.1445,  1.1445,  1.0700,  0.9645]  # pe_pich_quadril_8   (+trim)
+  - [-0.0873,  0.0872,  0.0872,  0.0872, -0.0873, -0.2618, -0.2618, -0.2618]  # pd_roll_quadril_9   (+abertura)
+  - [ 0.0873,  0.2618,  0.2618,  0.2618,  0.0873, -0.0872, -0.0872, -0.0872]  # pe_roll_quadril_10   (+abertura)

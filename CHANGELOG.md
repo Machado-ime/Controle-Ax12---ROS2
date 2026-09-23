@@ -6,7 +6,18 @@ arquivo: ver `git log`.
 
 ## [Não lançado]
 
+### Adicionado
+- `matriz_ciclo_trim.yaml` — `matriz_ciclo` com trim de pitch do quadril de −7° (o mesmo
+  offset do slider "Trim quadril (pitch)" do `controle_pe`), para alinhar o tronco.
+- `matriz_ciclo_trim2.yaml` — `matriz_ciclo` com trim de −9° e abertura das pernas de 5°
+  (rolls de quadril com sinais opostos: `pd_roll_quadril_9` −, `pe_roll_quadril_10` +; rolls
+  de tornozelo com o inverso, para a sola continuar plana). Ver `docs/adr.md` (2026-09-23).
+
 ### Removido
+- Leitura de IMU do `ax12_controller`: o tópico `/imu/data`, os parâmetros `taxa_imu` e
+  `imu_frame_id` e o acesso ao ID 200 da OpenCR. Não faz parte desta fase do projeto, e o
+  firmware `usb_to_dxl` gravado na placa nem responde no ID 200. Invalida a nota mais abaixo
+  sobre `/imu/data` continuar funcionando com o firmware `opencr_dxl_imu_bridge`.
 - `src/adam_bringup/` — o pacote inteiro (`package.xml`, `CMakeLists.txt`,
   `config/ros2_controllers.yaml`, `launch/mock.launch.py`). Era o único pacote que subia o
   `controller_manager`/`JointTrajectoryController` (o "Caso 2" do organograma, digital twin
