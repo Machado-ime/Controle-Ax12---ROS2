@@ -47,6 +47,7 @@ setup(
             'marcha_manual = ax12_control.marcha_manual:main',
             'medir_roll = ax12_control.medir_roll:main',
             'controle_pe = ax12_control.controle_pe:main',
+            'cabeca = ax12_control.cabeca:main',
         ],
     },
 )
