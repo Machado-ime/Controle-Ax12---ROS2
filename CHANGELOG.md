@@ -7,6 +7,11 @@ arquivo: ver `git log`.
 ## [Não lançado]
 
 ### Adicionado
+- Nó `cabeca` (`cabeca.py`) — versão resumida do `ax12_controller` para os 2 motores da
+  cabeça (IDs 1 e 2, juntas `cabeca_yaw_1` e `cabeca_picht_2`). Mesma interface
+  (`/joint_trajectory` → `/joint_states`), sem reconexão, modo observador, `/diagnostics` e
+  `/hardware_errors`. Precisa de barramento próprio: na corrente das pernas os IDs 1 e 2 são os
+  rolls de tornozelo. Ver `docs/cabeca.md`.
 - `matriz_ciclo_trim.yaml` — `matriz_ciclo` com trim de pitch do quadril de −7° (o mesmo
   offset do slider "Trim quadril (pitch)" do `controle_pe`), para alinhar o tronco.
 - `matriz_ciclo_trim2.yaml` — `matriz_ciclo` com trim de −9° e abertura das pernas de 5°

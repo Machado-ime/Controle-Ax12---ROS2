@@ -5,6 +5,27 @@ Append-only: não reescreva relatos antigos; corrija com um relato novo e datado
 
 ---
 
+## 2026-10-24 — Claude (a pedido de Fernando) — Nó da cabeça com 2 motores (IDs 1 e 2)
+`[decisão]`
+Criado o `cabeca.py`, uma versão resumida do `ax12_controller` só para os 2 motores da
+cabeça, com IDs 1 e 2. Esses IDs **colidem** com os rolls de tornozelo da corrente das pernas
+(`pd_roll_tornozelo_1`, `pe_roll_tornozelo_2`). Por isso, a cabeça precisa de um barramento e
+de um adaptador USB próprios: no mesmo barramento, o nó da cabeça moveria os tornozelos.
+A outra saída seria regravar os IDs da cabeça. Foi descartada porque o pedido foi
+explicitamente 1 e 2, e porque a regra do `joint_map` (sufixo do nome = ID) reserva o 11 ao 16
+para ombros e cotovelos.
+
+Os nomes `cabeca_yaw_1`/`cabeca_picht_2` e os limites de ±150° são provisórios: ainda não há
+juntas de pescoço no URDF nem medição de curso. Saíram do nó resumido a reconexão automática,
+o modo observador, o `/diagnostics` e o `/hardware_errors` (ver `docs/cabeca.md`).
+
+**Teste em bancada** (OpenCR anexada ao WSL via usbipd): o `scan_bus` achou só os IDs 1 e 2
+(AX-12A, 12,6 V, 36 °C). Comandados 0,35/−0,17 rad, os motores foram a +20,1°/−10,4°; o pitch
+para 0,7° além do alvo, compatível com a carga da cabeça. Ponto em aberto: o ID 2 estava em
+−11° no `scan_bus` e em +2,5° logo após o torque ligar. Ou foi movido à mão no intervalo, ou
+saltou para um Goal Position antigo ao ligar o torque, um comportamento que o `ax12_controller`
+também teria.
+
 ## 2026-09-23 — Claude (a pedido de Fernando) — Matrizes com trim e abertura; sinal do trim testado
 `[teste]`
 Criadas duas variantes da `matriz_ciclo` com correções fixas somadas em todas as colunas:

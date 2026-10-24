@@ -1,6 +1,6 @@
 # Troubleshooting
 
-- **Última atualização:** 2026-06-21
+- **Última atualização:** 2026-10-24
 - **Robô:** Adam (bípede AX-12 / ROS 2 Jazzy)
 
 ## Referência rápida
@@ -8,6 +8,8 @@
 | Sintoma | Causa provável | Solução |
 |---|---|---|
 | `Nao foi possivel abrir a porta` | Porta errada ou sem permissão | Confira com `ls /dev/ttyACM* /dev/ttyUSB*`. Permissão: `sudo usermod -aG dialout $USER` e relogue. Parâmetro: `--ros-args -p device:=/dev/ttyUSB0` |
+| `usbipd: error: Access denied; this operation requires administrator privileges.` (no `bind`) e depois `usbipd: error: Device is not shared; run 'usbipd bind --busid 4-2' as administrator first.` (no `attach`) | WSL: o `bind` foi rodado num PowerShell sem privilégio de administrador | Só o `bind` precisa de admin, e só uma vez por dispositivo: `Start-Process usbipd -ArgumentList 'bind','--busid','4-2' -Verb RunAs` (confirme o UAC). O `attach --wsl` roda em PowerShell normal. Confira o BUSID da OpenCR (`0483:5740`) em `usbipd list` |
+| `ModuleNotFoundError: No module named 'dynamixel_sdk'` | SDK não instalado na máquina | `sudo apt install ros-jazzy-dynamixel-sdk` |
 | `send_gait` roda mas o robô não se mexe | Máquinas em domínios diferentes ou QoS incompatível | `echo $ROS_DOMAIN_ID` deve ser igual nas duas. `ros2 topic info /joint_trajectory -v` deve listar 1 publisher e 1 subscription |
 | `Package 'ax12_control' not found` | Workspace não carregado | `source ~/dev/Controle-Ax12---ROS2/install/setup.bash` — confira se está no `~/.bashrc` |
 | `ERRO no arquivo de marcha (...)` | YAML malformado, chave faltando ou matriz inconsistente | Corrija o `.yaml` — veja o formato em [arquitetura.md](arquitetura.md#marchas-arquivos-yaml) |

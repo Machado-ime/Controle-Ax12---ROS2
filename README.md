@@ -62,6 +62,7 @@ Controle-Ax12---ROS2/
 │   │   │   └── controle_pe.launch.py
 │   │   ├── ax12_control/      # módulo Python (nome repetido = convenção ament_python)
 │   │   │   ├── ax12_controller.py   # nó de hardware (Raspberry Pi)
+│   │   │   ├── cabeca.py            # versão resumida do ax12_controller p/ os 2 motores da cabeça
 │   │   │   ├── send_gait.py         # gerador de marcha (PC de comando)
 │   │   │   ├── ax12_monitor.py      # painel de telemetria no terminal (PC)
 │   │   │   ├── visualizar_marcha.py # nó de visualização RViz (sem hardware)
@@ -78,6 +79,7 @@ Controle-Ax12---ROS2/
     ├── install.md           # tutorial: instalação + primeira execução
     ├── troubleshooting.md   # guia: problemas conhecidos e soluções
     ├── adr.md                # explicação: diário de bordo do projeto
+    ├── cabeca.md             # nó da cabeça (2 motores, barramento próprio)
     └── ref/                  # referência: links externos e cola de comandos
         ├── referencias-ax12.md
         └── comandos-ros.md
@@ -92,6 +94,7 @@ Controle-Ax12---ROS2/
 | Nó | Roda em | Função |
 |---|---|---|
 | `ax12_controller` | Raspberry Pi | Único processo no barramento serial — escreve posição/velocidade e lê telemetria dos 10 motores |
+| `cabeca` | Raspberry Pi | Versão resumida do `ax12_controller` para os 2 motores da cabeça (IDs 1 e 2), num barramento **próprio** — ver [docs/cabeca.md](docs/cabeca.md) |
 | `send_gait` | PC de comando | Lê a marcha de um `.yaml` e publica `/joint_trajectory` |
 | `ax12_monitor` | PC de comando | Painel de telemetria ao vivo no terminal |
 | `visualizar_marcha` + `passo_slider` | PC de comando | Digital twin no RViz sem hardware |
